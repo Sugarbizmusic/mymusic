@@ -1,3 +1,9 @@
+## Alpha 1.9.5
+- Added an expand/collapse toggle (`⤢` / `⤡`) on the player to switch into a full-screen now-playing view with large cover art and prominent transport controls.
+- Added a "Browse folders" button inside the expanded full-screen player that opens the Drive folder browser modal directly over the full-screen view.
+- Added a "Drive session expired · Tap to continue playback" prompt on the player when autoplay stops after the 1-hour Google token expires, allowing one-tap resume via the prompt or Play button.
+- Bumped service-worker cache namespace to `mymusic-shell-v1-9-5`.
+
 ## Alpha 1.9.4
 - Drive sign-in now survives page reloads until Google's token expires (about 1 hour).
 - Reconnect uses Google's quick sign-in instead of forcing the full consent screen every time.

@@ -13,9 +13,19 @@
 
 <div class="folder-toolbar"><button type="button" id="folderToggle" class="folder-toggle" aria-haspopup="dialog" aria-expanded="false"><span class="folder-toggle-icon">📁</span><span class="folder-toggle-copy"><strong>Browse folders</strong></span></button><button type="button" id="allSongsBtn" class="outline small-btn">All songs</button></div><div id="folderModal" class="folder-modal" hidden><div class="folder-modal-backdrop" data-close-folder></div><section class="folder-dialog" role="dialog" aria-modal="true" aria-labelledby="folderModalTitle"><div class="folder-dialog-header"><div><p class="eyebrow">YOUR COLLECTION</p><h2 id="folderModalTitle">Browse folders</h2></div><button type="button" id="folderClose" class="folder-close" aria-label="Close folder browser">×</button></div><div id="breadcrumbs" class="breadcrumbs"></div><div id="folderList" class="folder-list"></div></section></div><div id="trackList" class="track-list"></div><div id="emptyState" class="empty">No supported audio files found. Add MP3, WAV, M4A, AAC, FLAC or MP4 files inside MyMusic, then refresh.</div>
 </section></main>
-<section id="player" class="player panel"><div class="now"><div id="artPlaceholder" class="art-placeholder">♫</div><img id="artwork" class="artwork" alt="Album artwork" hidden><div class="nowtext"><p class="eyebrow">NOW PLAYING</p><strong id="trackTitle">Choose something to play</strong><small id="trackSubtitle">Your collection will appear here</small></div></div>
-<input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek"><div class="times"><span id="elapsed">0:00</span><span id="duration">0:00</span></div>
-<div class="controls"><button id="backBtn" aria-label="Previous track">|◀</button><button id="rewindBtn" aria-label="Rewind 15 seconds">↶</button><button id="playBtn" class="play" aria-label="Play">▶</button><button id="forwardBtn" aria-label="Forward 15 seconds">↷</button><button id="nextBtn" aria-label="Next track">▶|</button></div>
-<div class="player-footer"><span id="queueLabel">MY MUSIC</span><span class="version">ALPHA 1.9.4</span><label>VOL <input id="volume" type="range" min="0" max="1" step=".01" value=".85"></label></div></section>
+<section id="player" class="player panel">
+  <div class="player-top-bar">
+    <span class="eyebrow player-eyebrow">NOW PLAYING</span>
+    <div class="player-top-actions">
+      <button type="button" id="expandedBrowseBtn" class="outline small-btn expanded-only" aria-haspopup="dialog">📁 Browse folders</button>
+      <button type="button" id="expandBtn" class="icon-btn" aria-label="Expand player" aria-expanded="false" title="Expand player">⤢</button>
+    </div>
+  </div>
+  <button type="button" id="resumePrompt" class="resume-banner" hidden>Drive session expired · Tap to continue playback</button>
+  <div class="now"><div id="artPlaceholder" class="art-placeholder">♫</div><img id="artwork" class="artwork" alt="Album artwork" hidden><div class="nowtext"><p class="eyebrow inline-eyebrow">NOW PLAYING</p><strong id="trackTitle">Choose something to play</strong><small id="trackSubtitle">Your collection will appear here</small></div></div>
+  <div class="seek-wrap"><input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek"><div class="times"><span id="elapsed">0:00</span><span id="duration">0:00</span></div></div>
+  <div class="controls"><button id="backBtn" aria-label="Previous track">|◀</button><button id="rewindBtn" aria-label="Rewind 15 seconds">↶</button><button id="playBtn" class="play" aria-label="Play">▶</button><button id="forwardBtn" aria-label="Forward 15 seconds">↷</button><button id="nextBtn" aria-label="Next track">▶|</button></div>
+  <div class="player-footer"><span id="queueLabel">MY MUSIC</span><span class="version">ALPHA 1.9.5</span><label>VOL <input id="volume" type="range" min="0" max="1" step=".01" value=".85"></label></div>
+</section>
 <audio id="audio" preload="metadata"></audio><script src="https://accounts.google.com/gsi/client" async defer></script><script src="./app.js"></script>
 </body></html>

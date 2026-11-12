@@ -18,3 +18,7 @@ Replace all five app files. Confirm the player shows ALPHA 1.9.3 after reload. I
 
 ### Alpha 1.9.4
 Replace all five app files and reload once. Confirm the player shows ALPHA 1.9.4. Connect once; after that, reloads within the hour need no sign-in, and later visits need one tap.
+
+
+### Alpha 1.9.5
+Replace all five app files and reload once. Confirm the player shows ALPHA 1.9.5. Test expanding the player to full screen (`⤢`), browsing Drive folders from the expanded view, and resuming playback with one tap if a token expires during autoplay.
