@@ -145,38 +145,55 @@ body.folder-modal-open{overflow:hidden}
 .track{width:100%;text-align:left;color:#fff;font:inherit}
 
 
-/* Alpha 1.9.5 — Tap-to-continue banner + Full-screen expandable player */
-.player-top-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+/* Alpha 1.9.6 — Fixed expanded folder modal layering, edge-to-edge cover art overlay & audio toggles */
+.player-top-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;position:relative;z-index:3}
 .player-eyebrow{margin:0}
 .inline-eyebrow{display:none}
 .player-top-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
 .expanded-only{display:none}
 .icon-btn{width:34px;height:34px;padding:0;border-radius:50%;border:1px solid #514465;background:#262133;color:#f8f5ff;font-size:16px;line-height:1;display:grid;place-items:center;flex:none}
 .icon-btn:hover{background:#342c47;border-color:var(--accent)}
-.resume-banner{display:block;width:100%;margin:4px 0 10px;padding:10px 14px;border-radius:12px;border:1px solid #b99cff;background:linear-gradient(135deg,#3f3063,#2b2144);color:#fff;font-size:12px;font-weight:700;text-align:center;cursor:pointer}
+.resume-banner{display:block;width:100%;margin:4px 0 10px;padding:10px 14px;border-radius:12px;border:1px solid #b99cff;background:linear-gradient(135deg,#3f3063,#2b2144);color:#fff;font-size:12px;font-weight:700;text-align:center;cursor:pointer;position:relative;z-index:3}
 .resume-banner:hover{background:linear-gradient(135deg,#4d3b78,#352954)}
+.art-stage{position:relative;flex:none;display:grid;place-items:center}
+.art-gradient{display:none}
+.player-bottom-controls{width:100%;position:relative;z-index:3}
 .seek-wrap{width:100%}
+.audio-toggles{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.chip-toggle{padding:4px 9px;border-radius:999px;border:1px solid #514465;background:#24202e;color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.chip-toggle:hover{border-color:var(--accent);color:#fff}
+.chip-toggle.active{background:#3b3154;border-color:var(--accent);color:#f8f5ff}
+.player-footer{flex-wrap:wrap;gap:8px}
 
 /* Expanded full-screen player state */
 body.player-expanded{overflow:hidden}
-body.player-expanded header,body.player-expanded main{visibility:hidden}
-body.player-expanded .player{position:fixed;inset:0;z-index:10;max-width:none;width:100%;height:100dvh;margin:0;border:0;border-radius:0;background:radial-gradient(ellipse at 50% 18%,#382957,#111018 72%);display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:calc(16px + env(safe-area-inset-top)) clamp(20px,5vw,48px) calc(22px + env(safe-area-inset-bottom));overflow-y:auto}
-body.player-expanded .player-top-bar,body.player-expanded .resume-banner,body.player-expanded .seek-wrap,body.player-expanded .controls,body.player-expanded .player-footer{width:100%;max-width:680px}
+body.player-expanded header,body.player-expanded main{visibility:hidden;pointer-events:none}
+body.player-expanded .player{position:fixed;inset:0;z-index:10;max-width:none;width:100%;height:100dvh;margin:0;border:0;border-radius:0;background:#0e0c14;display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;padding:0 0 calc(18px + env(safe-area-inset-bottom));overflow:hidden}
+body.player-expanded .player-top-bar{width:100%;max-width:none;margin:0;padding:calc(14px + env(safe-area-inset-top)) clamp(16px,4vw,32px) 14px;background:rgba(14,12,20,.88);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.06);flex:none}
+body.player-expanded .resume-banner{width:calc(100% - 32px);max-width:680px;margin:10px auto 0}
 body.player-expanded .expanded-only{display:inline-flex;align-items:center;gap:6px}
-body.player-expanded .icon-btn{width:40px;height:40px;font-size:18px}
-body.player-expanded .now{flex-direction:column;justify-content:center;text-align:center;gap:20px;width:100%;max-width:680px;margin:auto 0;padding:10px 0}
-body.player-expanded .art-placeholder,body.player-expanded .artwork{width:min(340px,64vw,38vh);height:min(340px,64vw,38vh);border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,.55)}
-body.player-expanded .art-placeholder{font-size:clamp(64px,14vw,96px)}
-body.player-expanded .nowtext{width:100%}
-body.player-expanded .now strong{font-size:clamp(22px,4.5vw,32px);letter-spacing:-.5px;white-space:normal}
-body.player-expanded .now small{font-size:clamp(14px,2.5vw,16px);margin-top:8px;white-space:normal}
-body.player-expanded .seek-wrap input[type=range]{height:6px;margin:14px 0 6px}
+body.player-expanded .icon-btn{width:38px;height:38px;font-size:18px}
+
+/* Edge-to-edge cover art directly beneath the top bar with bottom black gradient & overlaid track info */
+body.player-expanded .now{position:relative;flex:1 1 auto;min-height:0;width:100%;max-width:none;margin:0;padding:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;text-align:left;overflow:hidden}
+body.player-expanded .art-stage{position:absolute;inset:0;width:100%;height:100%}
+body.player-expanded .art-placeholder,body.player-expanded .artwork{width:100%;height:100%;border-radius:0;object-fit:cover;object-position:center}
+body.player-expanded .art-placeholder{font-size:clamp(76px,18vw,130px);background:radial-gradient(circle at 50% 42%,#48376b,#161321 75%)}
+body.player-expanded .art-gradient{display:block;position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgba(14,12,20,0) 35%,rgba(14,12,20,.68) 70%,#0e0c14 100%)}
+body.player-expanded .nowtext{position:relative;z-index:2;width:100%;max-width:760px;margin:0 auto;padding:28px clamp(20px,5vw,40px) 16px}
+body.player-expanded .now strong{font-size:clamp(24px,5.2vw,36px);line-height:1.12;letter-spacing:-.6px;white-space:normal;text-shadow:0 2px 14px rgba(0,0,0,.75)}
+body.player-expanded .now small{font-size:clamp(14px,2.8vw,17px);color:#d7d0e6;margin-top:6px;white-space:normal;text-shadow:0 1px 10px rgba(0,0,0,.8)}
+
+/* Prominent bottom transport controls */
+body.player-expanded .player-bottom-controls{width:100%;max-width:760px;margin:0 auto;padding:4px clamp(20px,5vw,40px) 0;flex:none;background:#0e0c14}
+body.player-expanded .seek-wrap input[type=range]{height:6px;margin:8px 0 6px}
 body.player-expanded .times{font-size:12px}
-body.player-expanded .controls{gap:clamp(18px,6vw,42px);padding:14px 0}
+body.player-expanded .controls{gap:clamp(18px,6vw,44px);padding:12px 0}
 body.player-expanded .controls button{font-size:24px;padding:12px}
-body.player-expanded .controls .play{width:68px;height:68px;font-size:26px;box-shadow:0 10px 30px rgba(165,138,245,.35)}
+body.player-expanded .controls .play{width:68px;height:68px;font-size:26px;box-shadow:0 10px 30px rgba(165,138,245,.38)}
 body.player-expanded .player-footer{font-size:10px;padding-top:6px}
 
-/* Ensure folder modal sits cleanly above the expanded full-screen player */
-body.player-expanded .folder-modal{z-index:20;inset:0;padding:calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));align-items:center}
+/* Folder modal sits at body root above expanded player */
+.folder-modal{z-index:30}
+body.player-expanded .folder-modal{z-index:30;inset:0;padding:calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));align-items:center}
 body.player-expanded .folder-dialog{height:min(680px,86dvh);max-height:86dvh;border-radius:20px}

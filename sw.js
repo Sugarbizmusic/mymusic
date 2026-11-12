@@ -1,4 +1,4 @@
-const CACHE="mymusic-shell-v1-9-5";
+const CACHE="mymusic-shell-v1-9-6";
 const FILES=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting()));

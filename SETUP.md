@@ -22,3 +22,7 @@ Replace all five app files and reload once. Confirm the player shows ALPHA 1.9.4
 
 ### Alpha 1.9.5
 Replace all five app files and reload once. Confirm the player shows ALPHA 1.9.5. Test expanding the player to full screen (`⤢`), browsing Drive folders from the expanded view, and resuming playback with one tap if a token expires during autoplay.
+
+
+### Alpha 1.9.6
+Replace all five app files and reload once. Confirm the player shows ALPHA 1.9.6. Test clicking "Browse folders" from inside the expanded full-screen player, verify edge-to-edge cover art with bottom gradient text overlay, and test the new Level and Crossfade toggles.
