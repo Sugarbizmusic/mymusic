@@ -1,3 +1,10 @@
+## Alpha 1.9.4
+- Drive sign-in now survives page reloads until Google's token expires (about 1 hour).
+- Reconnect uses Google's quick sign-in instead of forcing the full consent screen every time.
+- Library scan is cached, so reconnecting no longer rescans Drive (use Refresh to rescan).
+- When sign-in expires, the library stays visible; tapping any track reconnects and plays in one step.
+- Removed the automatic sign-in popup on page load (browsers block it).
+
 ## Alpha 1.9.3
 - Rewired Browse folders and All songs using delegated click handling.
 - Exposed a small MyMusicApp diagnostic interface for verifying navigation state.

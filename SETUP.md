@@ -14,3 +14,7 @@ After replacing the five app files, reload the page once. The updated service wo
 
 ### Alpha 1.9.3
 Replace all five app files. Confirm the player shows ALPHA 1.9.3 after reload. In Chrome Console, `MyMusicApp.getNavigationState()` reports navigation controls and library state.
+
+
+### Alpha 1.9.4
+Replace all five app files and reload once. Confirm the player shows ALPHA 1.9.4. Connect once; after that, reloads within the hour need no sign-in, and later visits need one tap.
