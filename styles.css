@@ -129,13 +129,13 @@ button:active{transform:translateY(1px);box-shadow:0 2px 0 #120613}
 }
 .welcome h1,h1{
   font-family:var(--font-display);
-  font-weight:700;
+  font-weight:300;
   font-size:clamp(40px,8vw,64px);
-  line-height:.98;
-  letter-spacing:-1.8px;
+  line-height:1;
+  letter-spacing:-1.2px;
   color:var(--cream);
   margin:14px 0 16px;
-  text-shadow:0 3px 0 rgba(16,6,17,.8);
+  text-shadow:0 2px 12px rgba(16,6,17,.55);
 }
 .welcome p:not(.eyebrow){
   color:var(--cream-soft);
@@ -173,6 +173,7 @@ button:active{transform:translateY(1px);box-shadow:0 2px 0 #120613}
 /* Folder toolbar & pills */
 .folder-toolbar{
   display:flex;
+  flex-wrap:wrap;
   align-items:center;
   gap:10px;
   margin:14px 0 14px;
@@ -331,8 +332,8 @@ button:active{transform:translateY(1px);box-shadow:0 2px 0 #120613}
 .folder-dialog-header h2{
   font-family:var(--font-display);
   font-size:24px;
-  font-weight:700;
-  letter-spacing:-.5px;
+  font-weight:300;
+  letter-spacing:-.3px;
   color:var(--cream);
   margin:0;
 }
@@ -491,7 +492,9 @@ body.folder-modal-open{overflow:hidden}
   flex:none;
   box-shadow:none;
 }
-.icon-btn:hover{background:#432347;border-color:var(--gold)}
+.icon-btn svg{width:16px;height:16px;display:block}
+.icon-btn:hover{background:#432347;border-color:var(--gold);transform:none}
+.small-btn.active{border-color:var(--gold);color:#fff6df;background:var(--panel-soft);box-shadow:0 0 0 1px rgba(238,160,49,.35), 0 3px 0 #110612}
 .resume-banner{
   display:block;
   width:100%;
@@ -565,6 +568,27 @@ body.folder-modal-open{overflow:hidden}
   overflow:hidden;
   text-overflow:ellipsis;
 }
+/* Last played / Up next strip (docked player) */
+.queue-peek{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 0;position:relative;z-index:3}
+.queue-peek[hidden]{display:none}
+.peek{
+  display:flex;align-items:center;gap:6px;min-width:0;
+  padding:7px 10px;border-radius:12px;
+  border:1px solid rgba(243,224,181,.14);
+  background:rgba(27,13,29,.7);
+  color:var(--cream);text-align:left;font-weight:600;box-shadow:none;
+}
+.peek[hidden]{display:none}
+.peek:hover{border-color:rgba(238,160,49,.5);transform:none;filter:none}
+.peek-prev{opacity:.55}
+.peek-prev:hover{opacity:.85}
+.peek-next{grid-column:2;justify-content:flex-end;text-align:right}
+.peek-arrow{flex:none;display:grid;place-items:center;width:16px;height:16px;color:var(--gold)}
+.peek-arrow svg{width:14px;height:14px;display:block}
+.peek-text{min-width:0;display:flex;flex-direction:column}
+.peek-label{font-size:8.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);font-weight:800}
+.peek-title{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+body.player-expanded .queue-peek{display:none}
 .player-bottom-controls{width:100%;position:relative;z-index:3}
 .seek-wrap{width:100%}
 .player input[type=range]{
@@ -584,10 +608,16 @@ body.folder-modal-open{overflow:hidden}
   background:transparent;
   border:0;
   color:var(--cream);
-  font-size:18px;
-  padding:8px;
+  width:40px;
+  height:40px;
+  padding:0;
+  display:grid;
+  place-items:center;
+  flex:none;
   box-shadow:none;
 }
+.controls button svg{width:22px;height:22px;display:block}
+.controls .skip15 svg{width:26px;height:26px}
 .controls button:hover{color:var(--gold);transform:scale(1.06)}
 .controls .play{
   background:linear-gradient(135deg, var(--gold) 0%, var(--coral) 100%);
@@ -595,10 +625,13 @@ body.folder-modal-open{overflow:hidden}
   color:#190a19;
   width:52px;
   height:52px;
+  aspect-ratio:1/1;
   border-radius:50%;
-  font-size:19px;
   box-shadow:0 4px 0 #120613, 0 8px 22px rgba(221,105,79,.38);
 }
+.controls .play svg{width:22px;height:22px}
+.controls .play[data-state="play"] svg{transform:translateX(1.5px)}
+.controls .play:hover{transform:scale(1.04)}
 .player-footer{
   display:flex;
   justify-content:space-between;
@@ -637,12 +670,18 @@ body.folder-modal-open{overflow:hidden}
   body{padding-bottom:28px}
   .player{position:sticky;margin-top:26px;border-radius:24px}
 }
+@media(max-width:400px){
+  .folder-toggle-icon{display:none!important}
+}
 @media(max-width:600px){
   .folder-modal{bottom:calc(100vh - var(--player-top, 560px) + 8px)}
   .folder-dialog{width:100%;border-radius:0 0 18px 18px;padding:12px}
   .folder-dialog-header{padding-top:6px}
   .folder-toolbar{gap:8px}
-  .folder-toggle,.folder-toolbar>.small-btn{min-height:40px!important;padding:8px 14px!important}
+  .folder-toolbar{flex-wrap:nowrap;gap:6px}
+  .folder-toggle,.folder-toolbar>.small-btn{flex:1 1 auto!important;justify-content:center!important;min-height:40px!important;padding:8px 10px!important;font-size:12px!important;letter-spacing:0}
+  .folder-toggle{gap:5px!important}
+  .folder-toggle-copy strong{font-size:12px!important}
 }
 
 /* Expanded full-screen Now Playing view */
@@ -679,9 +718,10 @@ body.player-expanded .player-top-bar{
 }
 body.player-expanded .resume-banner{width:calc(100% - 32px);max-width:680px;margin:10px auto 0}
 body.player-expanded .expanded-only{display:inline-flex;align-items:center;gap:6px}
-body.player-expanded .icon-btn{width:38px;height:38px;font-size:18px}
+body.player-expanded .icon-btn{width:38px;height:38px}
+body.player-expanded .icon-btn svg{width:17px;height:17px}
 
-/* Responsive contained cover art + Linear Dodge (Add) vinyl overlay */
+/* Edge-to-edge cover art + Linear Dodge (Add) vinyl overlay */
 body.player-expanded .now{
   position:relative;
   flex:1 1 auto;
@@ -689,34 +729,30 @@ body.player-expanded .now{
   width:100%;
   max-width:none;
   margin:0;
-  padding:14px clamp(16px,5vw,32px) 0;
+  padding:0;
   display:flex;
   flex-direction:column;
-  justify-content:center;
+  justify-content:flex-start;
   align-items:center;
   text-align:left;
   overflow:hidden;
 }
 body.player-expanded .art-stage{
   position:relative;
-  flex:1 1 auto;
-  min-height:0;
+  flex:none;
   width:100%;
-  max-width:440px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  height:min(100vw, calc(100dvh - 385px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  min-height:180px;
+  display:block;
 }
 body.player-expanded .art-frame{
-  position:relative;
-  width:auto;
-  height:auto;
-  max-width:100%;
-  max-height:100%;
-  aspect-ratio:1/1;
-  border:1.5px solid rgba(243,224,181,.32);
-  border-radius:22px;
-  box-shadow:0 22px 54px rgba(0,0,0,.72);
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
   overflow:hidden;
   isolation:isolate;
 }
@@ -725,7 +761,7 @@ body.player-expanded .art-placeholder,body.player-expanded .artwork{
   height:100%;
   border:0;
   border-radius:0;
-  object-fit:contain;
+  object-fit:cover;
   object-position:center;
 }
 body.player-expanded .art-placeholder{
@@ -743,7 +779,16 @@ body.player-expanded .vinyl-overlay{
   opacity:.82;
 }
 body.player-expanded .art-gradient{
-  display:none;
+  display:block;
+  position:absolute;
+  left:0;right:0;bottom:0;
+  height:22%;
+  background:linear-gradient(180deg, rgba(17,7,18,0) 0%, rgba(17,7,18,.85) 80%, #110712 100%);
+  pointer-events:none;
+  z-index:3;
+}
+@media (min-width:700px){
+  body.player-expanded .art-stage{width:min(100%, calc(100dvh - 385px), 720px);height:auto;aspect-ratio:1/1}
 }
 body.player-expanded .nowtext{
   position:relative;
@@ -752,10 +797,11 @@ body.player-expanded .nowtext{
   width:100%;
   max-width:760px;
   margin:0 auto;
-  padding:16px clamp(4px,1vw,8px) 8px;
+  padding:4px clamp(20px,5vw,40px) 4px;
 }
 body.player-expanded .now strong{
-  font-size:clamp(24px,5vw,34px);
+  font-weight:300;
+  font-size:clamp(26px,6vw,36px);
   line-height:1.12;
   letter-spacing:-.6px;
   color:var(--cream);
@@ -781,11 +827,13 @@ body.player-expanded .player-bottom-controls{
 body.player-expanded .seek-wrap input[type=range]{height:6px;margin:8px 0 6px}
 body.player-expanded .times{font-size:12px}
 body.player-expanded .controls{gap:clamp(18px,6vw,44px);padding:12px 0}
-body.player-expanded .controls button{font-size:24px;padding:12px}
+body.player-expanded .controls button{width:48px;height:48px;padding:0}
+body.player-expanded .controls button svg{width:26px;height:26px}
+body.player-expanded .controls .skip15 svg{width:30px;height:30px}
+body.player-expanded .controls .play svg{width:28px;height:28px}
 body.player-expanded .controls .play{
   width:70px;
   height:70px;
-  font-size:26px;
   box-shadow:0 5px 0 #120613, 0 12px 32px rgba(238,160,49,.4);
 }
 body.player-expanded .player-footer{font-size:10px;padding-top:6px}

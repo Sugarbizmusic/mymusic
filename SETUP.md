@@ -34,3 +34,7 @@ Upload all app files including the three PNG logo assets (`logo-192.png`, `logo-
 
 ### Alpha 1.9.8
 Upload all app files including the updated PNG logo assets (`logo-192.png`, `logo-512.png`, `apple-touch-icon.png`) and `vinyl-overlay.jpg`, then reload once. Confirm the player shows ALPHA 1.9.8, headlines use Space Grotesk sans-serif, cover art scales cleanly inside the viewport on mobile/desktop without clipping, and the distressed vinyl sleeve texture blends over the artwork.
+
+
+### Alpha 1.9.9
+Upload ALL files in this package (including the PNG logos and vinyl-overlay.jpg), replacing everything in the repo, then hard reload. Confirm the player shows ALPHA 1.9.9.

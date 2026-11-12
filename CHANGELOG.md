@@ -1,3 +1,15 @@
+## Alpha 1.9.9
+- Headlines (Your library, the welcome headline, folder browser title, expanded track title) now use Space Grotesk Light (300).
+- Home player: new Last played / Up next strip. Last played is dimmed; tap it to go back, tap Up next to skip forward.
+- Added a Recent songs button next to All songs. It lists your last 30 played songs, newest first, and is saved between visits.
+- Expanded player: cover art now runs edge to edge under the top bar, with a soft fade into the title. Square art fills the full width; on short screens it crops slightly instead of shrinking.
+- Replaced all text-character icons with SVG icons, so the expand/collapse icon is centered everywhere.
+- Play button is now a true circle in both views (it was being squeezed into an egg shape on narrow screens).
+- New Back 15 / Forward 15 icons (circular arrow with "15") replace the old curly arrows.
+- Fixed: in All songs and Recent songs, Next now follows the list order instead of jumping between albums by file name.
+- Browse folders / All songs / Recent songs stay on one row on phones (folder emoji hidden under 400px wide).
+- Bumped service-worker cache to mymusic-shell-v1-9-9.
+
 ## Alpha 1.9.8
 - Replaced the serif `Fraunces` display typeface with **Space Grotesk** paired with **Plus Jakarta Sans** for an all-sans-serif typographic hierarchy.
 - Fixed full-screen cover art scaling on phones and desktop modals so artwork fits cleanly inside its square `.art-frame` container (`object-fit: contain`) without cropping past the screen edges.

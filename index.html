@@ -4,7 +4,7 @@
 <meta name="theme-color" content="#140915"><meta name="description" content="A private music library player powered by Google Drive.">
 <link rel="icon" type="image/png" href="./logo-192.png"><link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@300;400;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="./manifest.webmanifest"><link rel="stylesheet" href="./styles.css"><title>MyMusic</title>
 </head><body>
 <header>
@@ -38,6 +38,7 @@
       <span class="folder-toggle-copy"><strong>Browse folders</strong></span>
     </button>
     <button type="button" id="allSongsBtn" class="outline small-btn">All songs</button>
+    <button type="button" id="recentBtn" class="outline small-btn" aria-pressed="false">Recent songs</button>
   </div>
   <div id="trackList" class="track-list"></div>
   <div id="emptyState" class="empty">No supported audio files found. Add MP3, WAV, M4A, AAC, FLAC or MP4 files inside MyMusic, then refresh.</div>
@@ -60,7 +61,7 @@
     <span class="eyebrow player-eyebrow">NOW PLAYING</span>
     <div class="player-top-actions">
       <button type="button" id="expandedBrowseBtn" class="outline small-btn expanded-only" aria-haspopup="dialog">📁 Browse folders</button>
-      <button type="button" id="expandBtn" class="icon-btn" aria-label="Expand player" aria-expanded="false" title="Expand player">⤢</button>
+      <button type="button" id="expandBtn" class="icon-btn" aria-label="Expand player" aria-expanded="false" title="Expand player"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button>
     </div>
   </div>
   <button type="button" id="resumePrompt" class="resume-banner" hidden>Drive session expired · Tap to continue playback</button>
@@ -79,14 +80,18 @@
       <small id="trackSubtitle">Your collection will appear here</small>
     </div>
   </div>
+  <div id="queuePeek" class="queue-peek" hidden>
+    <button type="button" id="peekPrev" class="peek peek-prev" aria-label="Go back to the last song you played"><span class="peek-arrow"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span><span class="peek-text"><span class="peek-label">Last played</span><span class="peek-title" id="peekPrevTitle"></span></span></button>
+    <button type="button" id="peekNext" class="peek peek-next" aria-label="Skip to the next song"><span class="peek-text"><span class="peek-label">Up next</span><span class="peek-title" id="peekNextTitle"></span></span><span class="peek-arrow"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></button>
+  </div>
   <div class="player-bottom-controls">
     <div class="seek-wrap"><input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek"><div class="times"><span id="elapsed">0:00</span><span id="duration">0:00</span></div></div>
     <div class="controls">
-      <button id="backBtn" aria-label="Previous track">|◀</button>
-      <button id="rewindBtn" aria-label="Rewind 15 seconds">↶</button>
-      <button id="playBtn" class="play" aria-label="Play">▶</button>
-      <button id="forwardBtn" aria-label="Forward 15 seconds">↷</button>
-      <button id="nextBtn" aria-label="Next track">▶|</button>
+      <button id="backBtn" aria-label="Previous track"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="5" y="5" width="2.4" height="14" rx="1"/><path d="M19 5.6v12.8a.8.8 0 0 1-1.2.7L8.6 12.7a.8.8 0 0 1 0-1.4l9.2-6.4a.8.8 0 0 1 1.2.7z"/></svg></button>
+      <button id="rewindBtn" class="skip15" aria-label="Rewind 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 9.5A8 8 0 1 1 4 12.5"/><path d="M4.2 4.8v4.9h4.9"/><text x="12.6" y="15.6" text-anchor="middle" font-size="7.4" font-weight="800" fill="currentColor" stroke="none" font-family="Plus Jakarta Sans, sans-serif">15</text></svg></button>
+      <button id="playBtn" class="play" aria-label="Play"></button>
+      <button id="forwardBtn" class="skip15" aria-label="Forward 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 9.5A8 8 0 1 0 20 12.5"/><path d="M19.8 4.8v4.9h-4.9"/><text x="11.4" y="15.6" text-anchor="middle" font-size="7.4" font-weight="800" fill="currentColor" stroke="none" font-family="Plus Jakarta Sans, sans-serif">15</text></svg></button>
+      <button id="nextBtn" aria-label="Next track"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="16.6" y="5" width="2.4" height="14" rx="1"/><path d="M5 5.6v12.8a.8.8 0 0 0 1.2.7l9.2-6.4a.8.8 0 0 0 0-1.4L6.2 4.9a.8.8 0 0 0-1.2.7z"/></svg></button>
     </div>
     <div class="player-footer">
       <span id="queueLabel">MY MUSIC</span>
@@ -94,7 +99,7 @@
         <button type="button" id="levelToggleBtn" class="chip-toggle" aria-pressed="false" title="Match loudness across tracks">Level: Off</button>
         <button type="button" id="crossfadeToggleBtn" class="chip-toggle" aria-pressed="false" title="Crossfade between tracks">Crossfade: Off</button>
       </div>
-      <span class="version">ALPHA 1.9.8</span>
+      <span class="version">ALPHA 1.9.9</span>
       <label>VOL <input id="volume" type="range" min="0" max="1" step=".01" value=".85"></label>
     </div>
   </div>
