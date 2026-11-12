@@ -1,0 +1,9 @@
+{
+  "name": "MyMusic",
+  "short_name": "MyMusic",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#111018",
+  "theme_color": "#111018",
+  "icons": []
+}
