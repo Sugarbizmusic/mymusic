@@ -1,215 +1,35 @@
-// MyMusic Alpha 1.8 — folder accordion, multi-format playback, remembered Drive authorization.
-const CONFIG = {
-  CLIENT_ID: "249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",
-  ROOT_FOLDER_ID: "1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"
-};
-const SUPPORTED = new Set(["mp3","wav","m4a","aac","flac","mp4"]);
-const MIME_BY_EXT = {mp3:"audio/mpeg",wav:"audio/wav",m4a:"audio/mp4",aac:"audio/aac",flac:"audio/flac",mp4:"audio/mp4"};
-const $ = id => document.getElementById(id), audio = $("audio");
-let tokenClient=null, accessToken=null, tracks=[], queue=[], currentIndex=-1, currentObjectUrl=null, currentArtUrl=null, activeFilter="all", currentFolderPath=[];
-
+// MyMusic Alpha 1.9 — resilient Drive requests, true folder navigation and folder-scoped playback.
+const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
+const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
+const $=id=>document.getElementById(id),audio=$("audio");
+let tokenClient=null,accessToken=null,tracks=[],queue=[],currentIndex=-1,currentObjectUrl=null,currentArtUrl=null,currentFolderId=CONFIG.ROOT_FOLDER_ID,currentFolderPath=[],folderStack=[{id:CONFIG.ROOT_FOLDER_ID,name:"MyMusic"}],scanBusy=false,authPending=false,allSongsMode=false;
+const extOf=n=>String(n).split(".").pop().toLowerCase();
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const formatTime=n=>Number.isFinite(n)?`${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,"0")}`:"0:00";
 function setStatus(s){$("status").textContent=s}
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function extOf(name){return String(name).split(".").pop().toLowerCase()}
-function formatTime(n){if(!Number.isFinite(n))return "0:00";return `${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,"0")}`}
-let silentAuthAttempt=false;
-function showConnectScreen(message="Connect Google Drive to load your music"){
-  $("welcome").hidden=false;$("library").hidden=true;
-  $("connectBtn").textContent="Connect Google Drive";
-  setStatus(message);
-}
-function initAuth(){
-  if(!window.google?.accounts?.oauth2){setTimeout(initAuth,250);return}
-  tokenClient=google.accounts.oauth2.initTokenClient({client_id:CONFIG.CLIENT_ID,scope:"https://www.googleapis.com/auth/drive.readonly",callback:async r=>{
-    if(r.error){
-      accessToken=null;
-      if(silentAuthAttempt){
-        silentAuthAttempt=false;
-        showConnectScreen("Please reconnect Google Drive to continue");
-      }else{
-        setStatus("Google sign-in failed");
-        alert("Google sign-in failed: "+r.error);
-      }
-      return;
-    }
-    silentAuthAttempt=false;
-    accessToken=r.access_token;
-    try{localStorage.setItem("mymusic_drive_authorized","yes")}catch{}
-    $("welcome").hidden=true;$("library").hidden=false;$("connectBtn").textContent="Connected";
-    await scanLibrary();
-  }});
-  // GIS access tokens are short-lived. Never save the token itself; ask Google
-  // silently for a fresh one whenever the player opens. Existing consent/session
-  // normally allows this without another sign-in prompt.
-  try{
-    if(localStorage.getItem("mymusic_drive_authorized")==="yes"){
-      silentAuthAttempt=true;
-      tokenClient.requestAccessToken({prompt:""});
-    }else{
-      showConnectScreen();
-    }
-  }catch{
-    showConnectScreen();
-  }
-}
-function connectDrive(){
-  if(!tokenClient){alert("Google sign-in is still loading. Try again shortly.");return}
-  silentAuthAttempt=false;
-  // User-initiated fallback when silent authorization is unavailable.
-  tokenClient.requestAccessToken({prompt:"consent"});
-}
+function showConnectScreen(message="Connect Google Drive to load your music"){$("welcome").hidden=false;$("library").hidden=true;$("connectBtn").textContent="Reconnect Drive";setStatus(message)}
+function initAuth(){if(!window.google?.accounts?.oauth2){setTimeout(initAuth,250);return}tokenClient=google.accounts.oauth2.initTokenClient({client_id:CONFIG.CLIENT_ID,scope:"https://www.googleapis.com/auth/drive.readonly",callback:async r=>{authPending=false;if(r.error){accessToken=null;showConnectScreen("Drive connection expired. Please reconnect.");return}accessToken=r.access_token;try{localStorage.setItem("mymusic_drive_authorized","yes")}catch{}$("welcome").hidden=true;$("library").hidden=false;$("connectBtn").textContent="Connected";await scanLibrary()}});try{if(localStorage.getItem("mymusic_drive_authorized")==="yes"){authPending=true;tokenClient.requestAccessToken({prompt:""})}else showConnectScreen()}catch{showConnectScreen()}}
+function connectDrive(){if(!tokenClient){alert("Google sign-in is still loading. Try again shortly.");return}authPending=true;tokenClient.requestAccessToken({prompt:"consent"})}
 $("connectBtn").onclick=connectDrive;$("welcomeConnectBtn").onclick=connectDrive;$("refreshBtn").onclick=scanLibrary;
-
-async function driveList(parentId){
-  let pageToken=null,all=[];
-  do{
-    const p=new URLSearchParams({q:`'${parentId}' in parents and trashed=false`,pageSize:"1000",orderBy:"name",fields:"nextPageToken,files(id,name,mimeType,size,modifiedTime,parents,shortcutDetails)"});
-    if(pageToken)p.set("pageToken",pageToken);
-    const res=await fetch(`https://www.googleapis.com/drive/v3/files?${p}`,{headers:{Authorization:`Bearer ${accessToken}`}});
-    if(!res.ok)throw new Error(`Drive API ${res.status}: ${await res.text()}`);
-    const data=await res.json();all.push(...(data.files||[]));pageToken=data.nextPageToken;
-  }while(pageToken);
-  return all;
-}
-async function walkFolder(folderId,path=[],visited=new Set()){
-  if(visited.has(folderId))return [];visited.add(folderId);
-  const children=await driveList(folderId),found=[];
-  for(const f of children){
-    if(f.mimeType==="application/vnd.google-apps.folder"){
-      found.push(...await walkFolder(f.id,[...path,f.name],visited));
-    }else if(f.mimeType==="application/vnd.google-apps.shortcut" && f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder"){
-      found.push(...await walkFolder(f.shortcutDetails.targetId,[...path,f.name],visited));
-    }else if(SUPPORTED.has(extOf(f.name))){
-      found.push({...f,path,parentId:folderId,extension:extOf(f.name)});
-    }
-  }
-  return found;
-}
-function trackInfo(t){
-  const p=t.path||[],artist=p[0]||"Unknown Artist",release=p.length>1?p[p.length-1]:"Unsorted";
-  return {artist,release,title:t.name.replace(/\.[^.]+$/,"").replace(/^\d+[\s._-]+/,""),subtitle:`${artist} · ${release}`};
-}
-function formatCounts(){
-  const counts={};for(const t of tracks)counts[t.extension]=(counts[t.extension]||0)+1;
-  const labels=["mp3","wav","m4a","aac","flac","mp4"].filter(x=>counts[x]).map(x=>`${x.toUpperCase()}: ${counts[x]}`);
-  $("counts").textContent=`${tracks.length} audio files found${labels.length?" · "+labels.join(" · "):""}`;
-}
-let folderModalReturnFocus=null;
-function isInCurrentFolder(t){
-  const p=Array.isArray(t.path)?t.path:[];
-  return p.length>=currentFolderPath.length && currentFolderPath.every((part,i)=>p[i]===part);
-}
-function sizeFolderModal(){
-  const playerTop=$("player").getBoundingClientRect().top;
-  $("folderModal").style.setProperty("--player-top",`${Math.max(180,playerTop)}px`);
-}
-function openFolderModal(){
-  folderModalReturnFocus=document.activeElement;
-  sizeFolderModal();
-  $("folderModal").hidden=false;
-  $("folderToggle").setAttribute("aria-expanded","true");
-  document.body.classList.add("folder-modal-open");
-  $("folderClose").focus();
-}
-function closeFolderModal(){
-  $("folderModal").hidden=true;
-  $("folderToggle").setAttribute("aria-expanded","false");
-  document.body.classList.remove("folder-modal-open");
-  if(folderModalReturnFocus?.focus)folderModalReturnFocus.focus();
-}
-function renderFolderBrowser(){
-  const prefix=currentFolderPath.length;
-  const folders=[...new Set(tracks.map(t=>(Array.isArray(t.path)?t.path:[])[prefix]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  $("folderSummary").textContent=folders.length?`${folders.length} folders available`:"No folders found";
-  $("breadcrumbs").innerHTML=[
-    `<button type="button" data-depth="0">MyMusic</button>`,
-    ...currentFolderPath.map((part,i)=>`<span class="crumb-sep">›</span><button type="button" data-depth="${i+1}">${esc(part)}</button>`)
-  ].join("");
-  $("breadcrumbs").querySelectorAll("button").forEach(b=>b.onclick=()=>{
-    currentFolderPath=currentFolderPath.slice(0,Number(b.dataset.depth));renderTracks();
-  });
-  $("folderList").innerHTML=folders.length?folders.map(name=>{
-    const folderTracks=tracks.filter(t=>isInCurrentFolder(t)&&(t.path||[])[prefix]===name);
-    return `<button type="button" class="folder-row" data-folder="${esc(name)}"><span class="folder-icon">📁</span><span class="folder-label">${esc(name)}</span><span class="folder-count">${folderTracks.length} ${folderTracks.length===1?"track":"tracks"} <span aria-hidden="true">›</span></span></button>`;
-  }).join(""):`<div class="folder-empty">No subfolders at this level.</div>`;
-  $("folderList").querySelectorAll(".folder-row").forEach(el=>el.onclick=()=>{
-    currentFolderPath.push(el.dataset.folder);renderTracks();
-  });
-}
-$("folderToggle").onclick=openFolderModal;
-$("folderClose").onclick=closeFolderModal;
-$("folderModal").addEventListener("click",e=>{if(e.target.closest("[data-close-folder]"))closeFolderModal()});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("folderModal").hidden)closeFolderModal()});
-window.addEventListener("resize",()=>{if(!$("folderModal").hidden)sizeFolderModal()});
-function renderTracks(){
-  const term=$("searchInput").value.trim().toLowerCase();
-  renderFolderBrowser();
-  const visible=tracks.filter(t=>isInCurrentFolder(t)&&(t.path||[]).length===currentFolderPath.length)
-    .filter(t=>(activeFilter==="all"||t.extension===activeFilter||(activeFilter==="m4a"&&t.extension==="aac")))
-    .filter(t=>{const i=trackInfo(t);return `${i.title} ${i.artist} ${i.release} ${(t.path||[]).join(" ")}`.toLowerCase().includes(term)});
-  $("trackList").innerHTML=visible.map(t=>{const i=trackInfo(t),idx=queue.findIndex(q=>q.id===t.id);return `<div class="track ${idx===currentIndex?"current":""}" data-id="${esc(t.id)}"><div class="thumb">♫</div><div class="track-info"><div class="track-name">${esc(i.title)}</div><div class="track-meta">${esc(i.subtitle)}</div></div><span class="format">${t.extension.toUpperCase()}</span><span>▶</span></div>`}).join("");
-  $("trackList").querySelectorAll(".track").forEach(el=>el.onclick=()=>playTrackById(el.dataset.id));
-  $("emptyState").hidden=visible.length>0||$("folderList").querySelectorAll(".folder-row").length>0;
-  $("emptyState").textContent="No tracks in this folder. Open a subfolder or choose All songs.";
-}
-$("allSongsBtn").onclick=()=>{
-  currentFolderPath=[];activeFilter="all";
-  document.querySelectorAll(".filter").forEach(x=>x.classList.toggle("active",x.dataset.filter==="all"));
-  $("searchInput").value="";renderTracks();closeFolderModal();
-};async function scanLibrary(){
-  if(!accessToken)return;setStatus("Scanning Drive…");$("trackList").innerHTML="";
-  try{tracks=await walkFolder(CONFIG.ROOT_FOLDER_ID);tracks.sort((a,b)=>a.path.join("/").localeCompare(b.path.join("/"))||a.name.localeCompare(b.name));queue=[...tracks];formatCounts();renderTracks();setStatus("Library scan complete");}
-  catch(e){console.error(e);setStatus("Could not scan folder");alert("Couldn't scan MyMusic. Check Drive API access.\\n\\n"+e.message)}
-}
-$("searchInput").oninput=renderTracks;
-document.querySelectorAll(".filter").forEach(b=>b.onclick=()=>{document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeFilter=b.dataset.filter;renderTracks()});
-
-async function downloadFile(id){const r=await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`,{headers:{Authorization:`Bearer ${accessToken}`}});if(!r.ok)throw new Error(`Couldn't download file (${r.status})`);return r.blob()}
-async function loadArtwork(track){
-  if(currentArtUrl){URL.revokeObjectURL(currentArtUrl);currentArtUrl=null}
-  $("artwork").hidden=true;$("artPlaceholder").hidden=false;
-  const files=await driveList(track.parentId);
-  const images=files.filter(f=>/\.(jpe?g|png|webp)$/i.test(f.name));
-  const preferred=["artwork","cover","folder"];
-  const art=preferred.map(label=>images.find(f=>new RegExp(`^${label}\\\\.(jpe?g|png|webp)$`,"i").test(f.name))).find(Boolean)
-    ||images.find(f=>/^front\\.(jpe?g|png|webp)$/i.test(f.name))
-    ||images[0];
-  if(art){
-    const blob=await downloadFile(art.id);
-    currentArtUrl=URL.createObjectURL(blob);
-    $("artwork").src=currentArtUrl;
-    $("artwork").hidden=false;
-    $("artPlaceholder").hidden=true;
-  }
-}
-async function playTrackById(id){
-  const idx=queue.findIndex(t=>t.id===id);if(idx<0)return;currentIndex=idx;
-  const t=queue[idx],i=trackInfo(t);$("trackTitle").textContent=i.title;$("trackSubtitle").textContent=`${i.subtitle} · ${t.extension.toUpperCase()}`;$("queueLabel").textContent=i.artist.toUpperCase();$("playBtn").textContent="…";setStatus("Loading track…");
-  try{
-    if(currentObjectUrl)URL.revokeObjectURL(currentObjectUrl);
-    const [blob]=await Promise.all([downloadFile(t.id),loadArtwork(t)]);
-    currentObjectUrl=URL.createObjectURL(blob);audio.src=currentObjectUrl;audio.load();
-    await audio.play();$("playBtn").textContent="Ⅱ";setStatus("Playing");renderTracks();updateMediaSession(t,i);
-  }catch(e){console.error(e);$("playBtn").textContent="▶";setStatus("Playback unavailable");alert(`This file couldn't be played by this browser. The container or audio codec may not be supported.\\n\\n${e.message}`)}
-}
-function updateMediaSession(t,i){
-  if(!("mediaSession"in navigator))return;
-  const artwork=currentArtUrl?[{src:currentArtUrl,sizes:"512x512"}]:[];
-  navigator.mediaSession.metadata=new MediaMetadata({title:i.title,artist:i.artist,album:i.release,artwork});
-  const handlers={play:()=>audio.play(),pause:()=>audio.pause(),previoustrack:playPrevious,nexttrack:playNext,seekbackward:()=>audio.currentTime=Math.max(0,audio.currentTime-15),seekforward:()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+15),seekto:d=>{if(d.seekTime!=null)audio.currentTime=d.seekTime}};
-  for(const [a,fn] of Object.entries(handlers)){try{navigator.mediaSession.setActionHandler(a,fn)}catch{}}
-}
-function playNext(){if(queue.length)playTrackById(queue[(currentIndex+1)%queue.length].id)}
-function playPrevious(){if(!queue.length)return;if(audio.currentTime>3){audio.currentTime=0;return}playTrackById(queue[(currentIndex-1+queue.length)%queue.length].id)}
-$("playBtn").onclick=()=>{if(!audio.src){if(queue.length)playTrackById(queue[0].id)}else if(audio.paused)audio.play();else audio.pause()};
-$("nextBtn").onclick=playNext;$("backBtn").onclick=playPrevious;
-$("rewindBtn").onclick=()=>audio.currentTime=Math.max(0,audio.currentTime-15);
-$("forwardBtn").onclick=()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+15);
-audio.onplay=()=>{$("playBtn").textContent="Ⅱ";if(navigator.mediaSession)navigator.mediaSession.playbackState="playing"};
-audio.onpause=()=>{$("playBtn").textContent="▶";if(navigator.mediaSession)navigator.mediaSession.playbackState="paused"};
-audio.onended=playNext;
-audio.ontimeupdate=()=>{if(!audio.duration)return;$("seek").value=String(Math.round(audio.currentTime/audio.duration*1000));$("elapsed").textContent=formatTime(audio.currentTime);$("duration").textContent=formatTime(audio.duration)};
-$("seek").oninput=()=>{if(audio.duration)audio.currentTime=Number($("seek").value)/1000*audio.duration};
-$("volume").oninput=()=>audio.volume=Number($("volume").value);audio.volume=.85;
-if("serviceWorker"in navigator&&location.protocol.startsWith("http"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.warn));
-initAuth();
+async function driveList(parentId){let pageToken=null,all=[];do{const p=new URLSearchParams({q:`'${parentId}' in parents and trashed=false`,pageSize:"1000",orderBy:"name",fields:"nextPageToken,files(id,name,mimeType,size,modifiedTime,parents,shortcutDetails)"});if(pageToken)p.set("pageToken",pageToken);const res=await fetch(`https://www.googleapis.com/drive/v3/files?${p}`,{headers:{Authorization:`Bearer ${accessToken}`}});if(res.status===401||res.status===403){accessToken=null;showConnectScreen("Drive access expired or was revoked. Reconnect to continue.");throw new Error("Drive authorization expired ("+res.status+"). Please reconnect.")}if(!res.ok)throw new Error(`Drive API ${res.status}: ${await res.text()}`);const data=await res.json();all.push(...(data.files||[]));pageToken=data.nextPageToken}while(pageToken);return all}
+function trackInfo(t){const p=t.path||[],artist=p[0]||"Unknown Artist",release=p.length>1?p[p.length-1]:"Unsorted";return{artist,release,title:t.name.replace(/\.[^.]+$/,"" ).replace(/^\d+[\s._-]+/,""),subtitle:`${artist} · ${release}`}}
+async function walkFolder(id,path=[],seen=new Set()){if(seen.has(id))return[];seen.add(id);const items=await driveList(id),out=[];for(const f of items){if(f.mimeType==="application/vnd.google-apps.folder")out.push(...await walkFolder(f.id,[...path,f.name],seen));else if(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")out.push(...await walkFolder(f.shortcutDetails.targetId,[...path,f.name],seen));else if(SUPPORTED.has(extOf(f.name)))out.push({...f,path,parentId:id,extension:extOf(f.name)})}return out}
+function formatCounts(){$("counts").textContent=`${tracks.length} audio files found`}
+function renderBreadcrumbs(){$("breadcrumbs").innerHTML=folderStack.map((f,i)=>`${i?'<span class="crumb-sep">›</span>':''}<button type="button" data-depth="${i}">${esc(f.name)}</button>`).join("");$("breadcrumbs").querySelectorAll("button").forEach(b=>b.onclick=()=>navigateTo(Number(b.dataset.depth)))}
+function openFolderModal(){$("folderModal").hidden=false;$("folderToggle").setAttribute("aria-expanded","true");document.body.classList.add("folder-modal-open");renderFolderContents()}
+function closeFolderModal(){$("folderModal").hidden=true;$("folderToggle").setAttribute("aria-expanded","false");document.body.classList.remove("folder-modal-open")}
+async function navigateTo(depth){allSongsMode=false;folderStack=folderStack.slice(0,depth+1);currentFolderId=folderStack.at(-1).id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
+async function enterFolder(f){allSongsMode=false;folderStack.push({id:f.id,name:f.name});currentFolderId=f.id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
+async function renderFolderContents(){renderBreadcrumbs();$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';try{const items=await driveList(currentFolderId);const dirs=items.filter(f=>f.mimeType==="application/vnd.google-apps.folder"||(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")).sort((a,b)=>a.name.localeCompare(b.name));const local=items.filter(f=>SUPPORTED.has(extOf(f.name))).map(f=>({...f,path:currentFolderPath,parentId:currentFolderId,extension:extOf(f.name)})).sort((a,b)=>a.name.localeCompare(b.name));const rows=dirs.map(f=>`<button type="button" class="folder-row" data-id="${esc(f.mimeType==="application/vnd.google-apps.shortcut"?f.shortcutDetails.targetId:f.id)}" data-name="${esc(f.name)}"><span class="folder-icon">📁</span><span class="folder-label">${esc(f.name)}</span><span class="folder-count">Open ›</span></button>`).join("");$("folderList").innerHTML=(rows||'')+(local.length?`<div class="folder-section-label">TRACKS IN THIS FOLDER</div>`+local.map(t=>`<button type="button" class="folder-track" data-id="${esc(t.id)}"><span>♫</span><span>${esc(trackInfo(t).title)}</span><span>▶</span></button>`).join(""):'')||'<div class="folder-empty">This folder is empty.</div>';$("folderList").querySelectorAll(".folder-row").forEach(b=>b.onclick=()=>enterFolder({id:b.dataset.id,name:b.dataset.name}));$("folderList").querySelectorAll(".folder-track").forEach(b=>b.onclick=()=>{setQueueForFolder(local);playTrackById(b.dataset.id);closeFolderModal()});$("folderSummary").textContent=`${dirs.length} folders · ${local.length} tracks`}catch(e){console.error(e);$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)}</div>`}}
+$("folderToggle").onclick=openFolderModal;$("folderClose").onclick=closeFolderModal;$("folderModal").addEventListener("click",e=>{if(e.target.closest("[data-close-folder]"))closeFolderModal()});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("folderModal").hidden)closeFolderModal()});
+function setQueueForFolder(list){queue=[...list].sort((a,b)=>a.name.localeCompare(b.name));currentIndex=-1}
+function renderTracks(){const term=$("searchInput").value.trim().toLowerCase();const visible=(allSongsMode?tracks:tracks.filter(t=>(t.parentId===currentFolderId))).filter(t=>{const i=trackInfo(t);return`${i.title} ${i.artist} ${i.release}`.toLowerCase().includes(term)});$("trackList").innerHTML=visible.map(t=>`<button type="button" class="track ${queue[currentIndex]?.id===t.id?"current":""}" data-id="${esc(t.id)}"><span class="thumb">♫</span><span class="track-info"><span class="track-name">${esc(trackInfo(t).title)}</span><span class="track-meta">${esc(t.name)}</span></span><span>▶</span></button>`).join("");$("trackList").querySelectorAll(".track").forEach(b=>b.onclick=()=>{setQueueForFolder(visible);playTrackById(b.dataset.id)});$("emptyState").hidden=visible.length>0;$("emptyState").textContent="No tracks in this folder. Browse into a folder containing music, or choose All songs."}
+async function scanLibrary(){if(!accessToken||scanBusy)return;scanBusy=true;setStatus("Scanning Drive…");$("refreshBtn").disabled=true;try{tracks=await walkFolder(CONFIG.ROOT_FOLDER_ID);tracks.sort((a,b)=>a.path.join("/").localeCompare(b.path.join("/"))||a.name.localeCompare(b.name));queue=[...tracks];currentIndex=-1;folderStack=[{id:CONFIG.ROOT_FOLDER_ID,name:"MyMusic"}];currentFolderId=CONFIG.ROOT_FOLDER_ID;currentFolderPath=[];allSongsMode=false;formatCounts();renderTracks();setStatus(`Library scan complete · ${tracks.length} tracks`);if(!$ ("folderModal").hidden)renderFolderContents()}catch(e){console.error(e);setStatus("Drive connection needs attention");if(accessToken)alert("Couldn't scan MyMusic.\n\n"+e.message)}finally{scanBusy=false;$("refreshBtn").disabled=false}}
+$("searchInput").oninput=renderTracks;$("allSongsBtn").onclick=()=>{currentFolderId=CONFIG.ROOT_FOLDER_ID;folderStack=[{id:CONFIG.ROOT_FOLDER_ID,name:"MyMusic"}];currentFolderPath=[];allSongsMode=true;queue=[...tracks];currentIndex=-1;renderTracks();closeFolderModal()};
+async function downloadFile(id){const r=await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`,{headers:{Authorization:`Bearer ${accessToken}`}});if(r.status===401||r.status===403){accessToken=null;showConnectScreen("Drive access expired. Reconnect to continue.");throw new Error("Drive authorization expired. Please reconnect.")}if(!r.ok)throw new Error(`Couldn't download file (${r.status})`);return r.blob()}
+async function loadArtwork(track){if(currentArtUrl){URL.revokeObjectURL(currentArtUrl);currentArtUrl=null}$("artwork").hidden=true;$("artPlaceholder").hidden=false;const files=await driveList(track.parentId);const art=files.find(f=>/\.(jpe?g|png|webp)$/i.test(f.name));if(art){const blob=await downloadFile(art.id);currentArtUrl=URL.createObjectURL(blob);$("artwork").src=currentArtUrl;$("artwork").hidden=false;$("artPlaceholder").hidden=true}}
+async function playTrackById(id){const idx=queue.findIndex(t=>t.id===id);if(idx<0)return;currentIndex=idx;const t=queue[idx],i=trackInfo(t);$("trackTitle").textContent=i.title;$("trackSubtitle").textContent=i.subtitle;$("queueLabel").textContent=i.artist.toUpperCase();$("playBtn").textContent="…";setStatus("Loading track…");try{const [blob]=await Promise.all([downloadFile(t.id),loadArtwork(t).catch(err=>{console.warn("Artwork unavailable",err)})]);if(currentObjectUrl)URL.revokeObjectURL(currentObjectUrl);currentObjectUrl=URL.createObjectURL(blob);audio.src=currentObjectUrl;audio.load();await audio.play();setStatus("Playing");renderTracks();updateMediaSession(t,i)}catch(e){console.error(e);$("playBtn").textContent="▶";setStatus("Playback unavailable");alert(`This track couldn't be loaded.\n\n${e.message}`)}}
+function updateMediaSession(t,i){if(!("mediaSession"in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:i.title,artist:i.artist,album:i.release,artwork:currentArtUrl?[{src:currentArtUrl,sizes:"512x512"}]:[]});const h={play:()=>audio.play(),pause:()=>audio.pause(),previoustrack:playPrevious,nexttrack:playNext,seekbackward:()=>audio.currentTime=Math.max(0,audio.currentTime-15),seekforward:()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+15)};for(const[a,fn]of Object.entries(h)){try{navigator.mediaSession.setActionHandler(a,fn)}catch{}}}
+function playNext(){if(queue.length)playTrackById(queue[(currentIndex+1)%queue.length].id)}function playPrevious(){if(!queue.length)return;if(audio.currentTime>3){audio.currentTime=0;return}playTrackById(queue[(currentIndex-1+queue.length)%queue.length].id)}
+$("playBtn").onclick=()=>{if(!audio.src){if(queue.length)playTrackById(queue[0].id)}else if(audio.paused)audio.play();else audio.pause()};$("nextBtn").onclick=playNext;$("backBtn").onclick=playPrevious;$("rewindBtn").onclick=()=>audio.currentTime=Math.max(0,audio.currentTime-15);$("forwardBtn").onclick=()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+15);audio.onplay=()=>{$("playBtn").textContent="Ⅱ";if(navigator.mediaSession)navigator.mediaSession.playbackState="playing"};audio.onpause=()=>{$("playBtn").textContent="▶";if(navigator.mediaSession)navigator.mediaSession.playbackState="paused"};audio.onended=playNext;audio.ontimeupdate=()=>{if(!audio.duration)return;$("seek").value=String(Math.round(audio.currentTime/audio.duration*1000));$("elapsed").textContent=formatTime(audio.currentTime);$("duration").textContent=formatTime(audio.duration)};$("seek").oninput=()=>{if(audio.duration)audio.currentTime=Number($("seek").value)/1000*audio.duration};$("volume").oninput=()=>audio.volume=Number($("volume").value);audio.volume=.85;
+if("serviceWorker"in navigator&&location.protocol.startsWith("http"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.warn));initAuth();

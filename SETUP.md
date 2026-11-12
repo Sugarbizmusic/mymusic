@@ -1,7 +1,8 @@
-# MyMusic Player Alpha 1.8
+# MyMusic Alpha 1.9
 
-Replace index.html, app.js, styles.css, manifest.webmanifest, and sw.js in GitHub. Existing OAuth Client ID and Drive root ID are preserved.
+Replace the existing app files in the GitHub repository with the files in this folder:
+`index.html`, `app.js`, `styles.css`, `manifest.webmanifest`, and `sw.js`.
 
-The folder modal ends above the player so playback controls remain usable. Browse folders is a purple pill. Images in the same Drive folder as music are used as cover art; recommended names are cover.jpg or artwork.png.
+Keep the repository's GitHub Pages configuration unchanged. The configured Google OAuth Client ID and private MyMusic Drive root folder ID are retained in `app.js`.
 
-Commit to main and hard-refresh after deployment.
+The app requires the Google account used for OAuth to have access to the restricted MyMusic Drive folder. If Google authorization expires or is revoked, use Reconnect Drive.
