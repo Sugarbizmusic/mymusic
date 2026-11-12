@@ -10,3 +10,7 @@ The app requires the Google account used for OAuth to have access to the restric
 
 ### Alpha 1.9.2 cache refresh
 After replacing the five app files, reload the page once. The updated service worker uses a new cache namespace and refreshes app assets from the network.
+
+
+### Alpha 1.9.3
+Replace all five app files. Confirm the player shows ALPHA 1.9.3 after reload. In Chrome Console, `MyMusicApp.getNavigationState()` reports navigation controls and library state.

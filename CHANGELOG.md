@@ -1,3 +1,9 @@
+## Alpha 1.9.3
+- Rewired Browse folders and All songs using delegated click handling.
+- Exposed a small MyMusicApp diagnostic interface for verifying navigation state.
+- Made the optional folder summary element null-safe.
+- Bumped service-worker cache namespace.
+
 ## Alpha 1.9.2
 - Fixed stale Alpha 1.8 service-worker cache namespace.
 - Service worker now activates immediately, claims open tabs, and prefers fresh app assets.
