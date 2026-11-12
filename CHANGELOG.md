@@ -1,15 +1,10 @@
-# MyMusic Alpha 1.1
+# MyMusic Player — Alpha 1.3
 
-## Changes
-- Expanded discovery from MP3-only to MP3, WAV, M4A, AAC, FLAC and MP4 containers.
-- MP4 files are handled through the HTML audio element; no video UI is included.
-- Added format filter chips and per-format counts.
-- Added folder-shortcut traversal for Drive shortcuts that point to folders.
-- Preserved the existing Google Drive root folder ID and OAuth client ID.
-- Preserved read-only Drive scope and Media Session lock-screen controls.
+## Added
+- Silent Google Drive authorization attempt on app startup after the user has previously connected.
+- Remembers the authorization preference in browser local storage, but never stores Google access tokens or passwords.
+- If Google cannot silently authorize (for example, the Google session expired, consent was revoked, or browser privacy settings block it), the app shows the normal Connect Google Drive screen.
+- Retains the Alpha 1.2 folder browser, breadcrumb navigation, All songs shortcut, and small player version label (now ALPHA 1.3).
 
-## Compatibility note
-The browser's audio decoder determines whether a specific file can play. WAV, MP3 and common AAC/M4A/MP4 audio are widely supported, but FLAC and MP4 codec support varies by browser and operating system. Unsupported files remain listed and show a playback error when selected.
-
-## Deployment
-Replace the existing repository files with this package's files and commit to `main`. Keep `app.js`'s configured Client ID and root folder ID intact.
+## Important behavior
+Google access tokens are short-lived. The app requests a fresh token from Google on startup rather than saving a token locally. Silent reconnection depends on Google's session and browser privacy settings; occasional manual reconnection may still be required.

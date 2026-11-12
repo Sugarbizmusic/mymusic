@@ -1,4 +1,4 @@
-// MyMusic Alpha 1.1 — multi-format, audio-only Google Drive player.
+// MyMusic Alpha 1.3 — folder navigation, multi-format playback, remembered Drive authorization.
 const CONFIG = {
   CLIENT_ID: "249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",
   ROOT_FOLDER_ID: "1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"
@@ -6,20 +6,58 @@ const CONFIG = {
 const SUPPORTED = new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 const MIME_BY_EXT = {mp3:"audio/mpeg",wav:"audio/wav",m4a:"audio/mp4",aac:"audio/aac",flac:"audio/flac",mp4:"audio/mp4"};
 const $ = id => document.getElementById(id), audio = $("audio");
-let tokenClient=null, accessToken=null, tracks=[], queue=[], currentIndex=-1, currentObjectUrl=null, currentArtUrl=null, activeFilter="all";
+let tokenClient=null, accessToken=null, tracks=[], queue=[], currentIndex=-1, currentObjectUrl=null, currentArtUrl=null, activeFilter="all", currentFolderPath=[];
 
 function setStatus(s){$("status").textContent=s}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function extOf(name){return String(name).split(".").pop().toLowerCase()}
 function formatTime(n){if(!Number.isFinite(n))return "0:00";return `${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,"0")}`}
+let silentAuthAttempt=false;
+function showConnectScreen(message="Connect Google Drive to load your music"){
+  $("welcome").hidden=false;$("library").hidden=true;
+  $("connectBtn").textContent="Connect Google Drive";
+  setStatus(message);
+}
 function initAuth(){
   if(!window.google?.accounts?.oauth2){setTimeout(initAuth,250);return}
   tokenClient=google.accounts.oauth2.initTokenClient({client_id:CONFIG.CLIENT_ID,scope:"https://www.googleapis.com/auth/drive.readonly",callback:async r=>{
-    if(r.error){setStatus("Google sign-in failed");alert("Google sign-in failed: "+r.error);return}
-    accessToken=r.access_token;$("welcome").hidden=true;$("library").hidden=false;$("connectBtn").textContent="Connected";await scanLibrary();
+    if(r.error){
+      accessToken=null;
+      if(silentAuthAttempt){
+        silentAuthAttempt=false;
+        showConnectScreen("Please reconnect Google Drive to continue");
+      }else{
+        setStatus("Google sign-in failed");
+        alert("Google sign-in failed: "+r.error);
+      }
+      return;
+    }
+    silentAuthAttempt=false;
+    accessToken=r.access_token;
+    try{localStorage.setItem("mymusic_drive_authorized","yes")}catch{}
+    $("welcome").hidden=true;$("library").hidden=false;$("connectBtn").textContent="Connected";
+    await scanLibrary();
   }});
+  // GIS access tokens are short-lived. Never save the token itself; ask Google
+  // silently for a fresh one whenever the player opens. Existing consent/session
+  // normally allows this without another sign-in prompt.
+  try{
+    if(localStorage.getItem("mymusic_drive_authorized")==="yes"){
+      silentAuthAttempt=true;
+      tokenClient.requestAccessToken({prompt:""});
+    }else{
+      showConnectScreen();
+    }
+  }catch{
+    showConnectScreen();
+  }
 }
-function connectDrive(){if(!tokenClient){alert("Google sign-in is still loading. Try again shortly.");return}tokenClient.requestAccessToken({prompt:accessToken?"":"consent"})}
+function connectDrive(){
+  if(!tokenClient){alert("Google sign-in is still loading. Try again shortly.");return}
+  silentAuthAttempt=false;
+  // User-initiated fallback when silent authorization is unavailable.
+  tokenClient.requestAccessToken({prompt:"consent"});
+}
 $("connectBtn").onclick=connectDrive;$("welcomeConnectBtn").onclick=connectDrive;$("refreshBtn").onclick=scanLibrary;
 
 async function driveList(parentId){
@@ -56,13 +94,37 @@ function formatCounts(){
   const labels=["mp3","wav","m4a","aac","flac","mp4"].filter(x=>counts[x]).map(x=>`${x.toUpperCase()}: ${counts[x]}`);
   $("counts").textContent=`${tracks.length} audio files found${labels.length?" · "+labels.join(" · "):""}`;
 }
+function isInCurrentFolder(t){
+  const p=t.path||[];
+  return p.length>=currentFolderPath.length && currentFolderPath.every((part,i)=>p[i]===part);
+}
+function renderFolderBrowser(){
+  const prefix=currentFolderPath.length;
+  const folders=[...new Set(tracks.filter(isInCurrentFolder).map(t=>(t.path||[])[prefix]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  $("breadcrumbs").innerHTML=[
+    `<button data-depth="0">MyMusic</button>`,
+    ...currentFolderPath.map((part,i)=>`<span class="crumb-sep">›</span><button data-depth="${i+1}">${esc(part)}</button>`)
+  ].join("");
+  $("breadcrumbs").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    currentFolderPath=currentFolderPath.slice(0,Number(b.dataset.depth));renderTracks();
+  });
+  $("allSongsBtn").onclick=()=>{currentFolderPath=[];activeFilter="all";document.querySelectorAll(".filter").forEach(x=>x.classList.toggle("active",x.dataset.filter==="all"));$("searchInput").value="";renderTracks()};
+  $("folderList").innerHTML=folders.map(name=>{
+    const folderTracks=tracks.filter(t=>isInCurrentFolder(t)&&(t.path||[])[prefix]===name);
+    return `<div class="folder-row" data-folder="${esc(name)}"><span class="folder-icon">📁</span><span class="folder-label">${esc(name)}</span><span class="folder-count">${folderTracks.length} ${folderTracks.length===1?"track":"tracks"} ›</span></div>`;
+  }).join("");
+  $("folderList").querySelectorAll(".folder-row").forEach(el=>el.onclick=()=>{currentFolderPath.push(el.dataset.folder);renderTracks()});
+}
 function renderTracks(){
   const term=$("searchInput").value.trim().toLowerCase();
-  const visible=tracks.filter(t=>(activeFilter==="all"||t.extension===activeFilter||(activeFilter==="m4a"&&t.extension==="aac")))
+  renderFolderBrowser();
+  const visible=tracks.filter(t=>isInCurrentFolder(t)&&(t.path||[]).length===currentFolderPath.length)
+    .filter(t=>(activeFilter==="all"||t.extension===activeFilter||(activeFilter==="m4a"&&t.extension==="aac")))
     .filter(t=>{const i=trackInfo(t);return `${i.title} ${i.artist} ${i.release} ${t.path.join(" ")}`.toLowerCase().includes(term)});
   $("trackList").innerHTML=visible.map(t=>{const i=trackInfo(t),idx=queue.findIndex(q=>q.id===t.id);return `<div class="track ${idx===currentIndex?"current":""}" data-id="${esc(t.id)}"><div class="thumb">♫</div><div class="track-info"><div class="track-name">${esc(i.title)}</div><div class="track-meta">${esc(i.subtitle)}</div></div><span class="format">${t.extension.toUpperCase()}</span><span>▶</span></div>`}).join("");
   $("trackList").querySelectorAll(".track").forEach(el=>el.onclick=()=>playTrackById(el.dataset.id));
-  $("emptyState").hidden=visible.length>0;
+  $("emptyState").hidden=visible.length>0||$("folderList").children.length>0;
+  $("emptyState").textContent=$("folderList").children.length?"No tracks directly in this folder. Open a subfolder or choose All songs.":"No supported audio files found here.";
 }
 async function scanLibrary(){
   if(!accessToken)return;setStatus("Scanning Drive…");$("trackList").innerHTML="";

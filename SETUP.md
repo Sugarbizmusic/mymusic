@@ -1,11 +1,16 @@
-# MyMusic Alpha 1.1 deployment
+# MyMusic Player Alpha 1.3
 
-1. Unzip this package.
-2. In the existing `sugarbizmusic/mymusic` GitHub repository, replace the existing six files with the files in this folder. Upload the updated `index.html`, `styles.css`, `app.js`, `manifest.webmanifest`, `sw.js`, and `CHANGELOG.md` (and optionally this guide).
-3. Commit directly to `main`. GitHub Pages will redeploy automatically.
-4. Open the site and use Refresh library. If the old interface remains cached, hard-refresh the browser or close/reopen the home-screen web app.
+Replace the app files in the root of `sugarbizmusic/mymusic` with the files in this package:
+- `index.html`
+- `app.js`
+- `styles.css`
+- `manifest.webmanifest`
+- `sw.js`
 
-Google settings are unchanged. Keep the Drive folder Restricted. The application uses the existing OAuth Client ID and requests only `drive.readonly`.
+Optionally upload `CHANGELOG.md` for reference.
 
-## Supported file extensions
-MP3, WAV, M4A, AAC, FLAC and MP4. MP4 is presented as audio only. Actual playback depends on browser/OS codec support.
+Your configured Google OAuth Client ID and MyMusic Drive root folder ID are retained in `app.js`. Do not replace them with placeholders.
+
+After committing to `main`, wait for GitHub Pages to redeploy, then hard-refresh the site. On iPhone, fully close and reopen the web app if it still displays the prior version.
+
+Alpha 1.3 includes folder navigation, the player version label, and automatic silent Google Drive reauthorization where Google's session permits it. It does not store your Google password or access token.
