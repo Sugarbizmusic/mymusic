@@ -1,5 +1,5 @@
 // MyMusic Alpha 1.0 — Drive read-only player
-const CONFIG={CLIENT_ID:"PASTE_GOOGLE_OAUTH_WEB_CLIENT_ID_HERE",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
+const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const $=id=>document.getElementById(id),audio=$("audio");
 let tokenClient,token=null,tracks=[],queue=[],index=-1,blobUrl=null,artUrl=null;
 function status(s){$("status").textContent=s}
