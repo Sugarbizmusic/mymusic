@@ -1,4 +1,4 @@
-// MyMusic Alpha 1.9.6 — fixed expanded folder modal, edge-to-edge cover art overlay, loudness leveling & crossfade toggles.
+// MyMusic Alpha 1.9.8 — sans-serif display typography, responsive contained cover art, Linear Dodge (Add) vinyl overlay & updated app icon.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 const $=id=>document.getElementById(id);

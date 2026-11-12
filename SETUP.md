@@ -26,3 +26,11 @@ Replace all five app files and reload once. Confirm the player shows ALPHA 1.9.5
 
 ### Alpha 1.9.6
 Replace all five app files and reload once. Confirm the player shows ALPHA 1.9.6. Test clicking "Browse folders" from inside the expanded full-screen player, verify edge-to-edge cover art with bottom gradient text overlay, and test the new Level and Crossfade toggles.
+
+
+### Alpha 1.9.7
+Upload all app files including the three PNG logo assets (`logo-192.png`, `logo-512.png`, `apple-touch-icon.png`) and reload once. Confirm the player shows ALPHA 1.9.7, your vinyl/ribbon emblem appears in the header and default player art, and the dark 70s funk color palette and Fraunces/Plus Jakarta Sans typography load cleanly.
+
+
+### Alpha 1.9.8
+Upload all app files including the updated PNG logo assets (`logo-192.png`, `logo-512.png`, `apple-touch-icon.png`) and `vinyl-overlay.jpg`, then reload once. Confirm the player shows ALPHA 1.9.8, headlines use Space Grotesk sans-serif, cover art scales cleanly inside the viewport on mobile/desktop without clipping, and the distressed vinyl sleeve texture blends over the artwork.

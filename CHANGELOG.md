@@ -1,3 +1,15 @@
+## Alpha 1.9.8
+- Replaced the serif `Fraunces` display typeface with **Space Grotesk** paired with **Plus Jakarta Sans** for an all-sans-serif typographic hierarchy.
+- Fixed full-screen cover art scaling on phones and desktop modals so artwork fits cleanly inside its square `.art-frame` container (`object-fit: contain`) without cropping past the screen edges.
+- Added the distressed vinyl sleeve overlay (`vinyl-overlay.jpg` from `album.jpg`) layered directly over cover art using `mix-blend-mode: plus-lighter` (matching Photoshop's **Linear Dodge (Add)** blend mode).
+- Replaced all app icons (`logo-192.png`, `logo-512.png`, `apple-touch-icon.png`) with the updated `MyMusic_Icon.png` artwork and bumped the service-worker cache namespace to `mymusic-shell-v1-9-8`.
+
+## Alpha 1.9.7
+- Applied a refined **Modern 70s Funk** dark-mode visual system sampled directly from your vinyl/ribbon emblem (`#140915` deep plum-espresso background, `#F3E0B5` warm cream typography & borders, `#8D3778` royal plum, `#DD694F` terracotta coral, `#EEA031` marigold gold, and `#C87422` burnt amber).
+- Replaced the header icon and default album artwork placeholder with your custom logo (`logo-192.png`, `logo-512.png`, and `apple-touch-icon.png`) and registered them in `manifest.webmanifest`.
+- Updated display typography to **Fraunces** paired with **Plus Jakarta Sans**, added tactile cream-rimmed pill buttons with subtle offset shadows, vinyl disc track thumbnails, and 4-color funk ribbon accents.
+- Bumped service-worker cache namespace to `mymusic-shell-v1-9-7`.
+
 ## Alpha 1.9.6
 - Fixed the "Browse folders" button inside the expanded full-screen player by moving `#folderModal` out of `<main>` (which was hidden during full-screen playback).
 - Redesigned the expanded full-screen Now Playing layout so cover art bleeds edge-to-edge directly beneath the top bar, with a smooth bottom black gradient fading into overlaid track title and artist/release metadata.

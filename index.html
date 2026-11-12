@@ -1,20 +1,61 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#111018"><meta name="description" content="A private music library player powered by Google Drive.">
+<meta name="theme-color" content="#140915"><meta name="description" content="A private music library player powered by Google Drive.">
+<link rel="icon" type="image/png" href="./logo-192.png"><link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
 <link rel="manifest" href="./manifest.webmanifest"><link rel="stylesheet" href="./styles.css"><title>MyMusic</title>
 </head><body>
-<header><div class="brand"><span class="brand-mark">♫</span><div><strong>MyMusic</strong><small>YOUR PERSONAL MUSIC LIBRARY</small></div></div><button id="connectBtn" class="outline">Connect Drive</button></header>
+<header>
+  <div class="brand">
+    <img src="./logo-192.png" alt="MyMusic logo" class="brand-logo">
+    <div><strong>MyMusic</strong><small>YOUR PERSONAL MUSIC LIBRARY</small></div>
+  </div>
+  <button id="connectBtn" class="outline">Connect Drive</button>
+</header>
 <main>
-<section id="welcome" class="welcome panel"><p class="eyebrow">YOUR MUSIC. YOUR DRIVE.</p><h1>Everything<br>you've made.</h1><p>Connect Google Drive to scan your private MyMusic folder and build your personal listening library.</p><button id="welcomeConnectBtn">Connect Google Drive</button><p class="fine">Read-only access. Your music stays in your Drive.</p></section>
-<section id="library" hidden><div class="heading"><div><p class="eyebrow">THE COLLECTION</p><h1>Your library</h1></div><button id="refreshBtn" class="outline">↻ Refresh</button></div>
-<input id="searchInput" class="search" type="search" placeholder="Search tracks, projects, albums">
-<div id="status" class="status">Ready</div><div id="counts" class="counts"></div>
+<section id="welcome" class="welcome panel">
+  <div class="funk-ribbon" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <p class="eyebrow">YOUR MUSIC. YOUR DRIVE.</p>
+  <h1>Everything<br>you've made.</h1>
+  <p>Connect Google Drive to scan your private MyMusic folder and build your personal listening library.</p>
+  <button id="welcomeConnectBtn">Connect Google Drive</button>
+  <p class="fine">Read-only access. Your music stays in your Drive.</p>
+</section>
+<section id="library" hidden>
+  <div class="heading">
+    <div><p class="eyebrow">THE COLLECTION</p><h1>Your library</h1></div>
+    <button id="refreshBtn" class="outline">↻ Refresh</button>
+  </div>
+  <input id="searchInput" class="search" type="search" placeholder="Search tracks, projects, albums">
+  <div id="status" class="status">Ready</div>
+  <div id="counts" class="counts"></div>
 
-<div class="folder-toolbar"><button type="button" id="folderToggle" class="folder-toggle" aria-haspopup="dialog" aria-expanded="false"><span class="folder-toggle-icon">📁</span><span class="folder-toggle-copy"><strong>Browse folders</strong></span></button><button type="button" id="allSongsBtn" class="outline small-btn">All songs</button></div><div id="trackList" class="track-list"></div><div id="emptyState" class="empty">No supported audio files found. Add MP3, WAV, M4A, AAC, FLAC or MP4 files inside MyMusic, then refresh.</div>
-</section></main>
-<div id="folderModal" class="folder-modal" hidden><div class="folder-modal-backdrop" data-close-folder></div><section class="folder-dialog" role="dialog" aria-modal="true" aria-labelledby="folderModalTitle"><div class="folder-dialog-header"><div><p class="eyebrow">YOUR COLLECTION</p><h2 id="folderModalTitle">Browse folders</h2></div><button type="button" id="folderClose" class="folder-close" aria-label="Close folder browser">×</button></div><div id="breadcrumbs" class="breadcrumbs"></div><div id="folderList" class="folder-list"></div></section></div>
+  <div class="folder-toolbar">
+    <button type="button" id="folderToggle" class="folder-toggle" aria-haspopup="dialog" aria-expanded="false">
+      <span class="folder-toggle-icon">📁</span>
+      <span class="folder-toggle-copy"><strong>Browse folders</strong></span>
+    </button>
+    <button type="button" id="allSongsBtn" class="outline small-btn">All songs</button>
+  </div>
+  <div id="trackList" class="track-list"></div>
+  <div id="emptyState" class="empty">No supported audio files found. Add MP3, WAV, M4A, AAC, FLAC or MP4 files inside MyMusic, then refresh.</div>
+</section>
+</main>
+<div id="folderModal" class="folder-modal" hidden>
+  <div class="folder-modal-backdrop" data-close-folder></div>
+  <section class="folder-dialog" role="dialog" aria-modal="true" aria-labelledby="folderModalTitle">
+    <div class="folder-dialog-header">
+      <div><p class="eyebrow">YOUR COLLECTION</p><h2 id="folderModalTitle">Browse folders</h2></div>
+      <button type="button" id="folderClose" class="folder-close" aria-label="Close folder browser">×</button>
+    </div>
+    <div id="breadcrumbs" class="breadcrumbs"></div>
+    <div id="folderList" class="folder-list"></div>
+  </section>
+</div>
 <section id="player" class="player panel">
+  <div class="funk-ribbon player-ribbon" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <div class="player-top-bar">
     <span class="eyebrow player-eyebrow">NOW PLAYING</span>
     <div class="player-top-actions">
@@ -25,8 +66,11 @@
   <button type="button" id="resumePrompt" class="resume-banner" hidden>Drive session expired · Tap to continue playback</button>
   <div class="now">
     <div class="art-stage">
-      <div id="artPlaceholder" class="art-placeholder">♫</div>
-      <img id="artwork" class="artwork" alt="Album artwork" hidden>
+      <div class="art-frame">
+        <div id="artPlaceholder" class="art-placeholder"><img src="./logo-512.png" alt="MyMusic vinyl emblem" class="placeholder-emblem"></div>
+        <img id="artwork" class="artwork" alt="Album artwork" hidden>
+        <img src="./vinyl-overlay.jpg" alt="" class="vinyl-overlay" aria-hidden="true">
+      </div>
       <div class="art-gradient" aria-hidden="true"></div>
     </div>
     <div class="nowtext">
@@ -37,14 +81,20 @@
   </div>
   <div class="player-bottom-controls">
     <div class="seek-wrap"><input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek"><div class="times"><span id="elapsed">0:00</span><span id="duration">0:00</span></div></div>
-    <div class="controls"><button id="backBtn" aria-label="Previous track">|◀</button><button id="rewindBtn" aria-label="Rewind 15 seconds">↶</button><button id="playBtn" class="play" aria-label="Play">▶</button><button id="forwardBtn" aria-label="Forward 15 seconds">↷</button><button id="nextBtn" aria-label="Next track">▶|</button></div>
+    <div class="controls">
+      <button id="backBtn" aria-label="Previous track">|◀</button>
+      <button id="rewindBtn" aria-label="Rewind 15 seconds">↶</button>
+      <button id="playBtn" class="play" aria-label="Play">▶</button>
+      <button id="forwardBtn" aria-label="Forward 15 seconds">↷</button>
+      <button id="nextBtn" aria-label="Next track">▶|</button>
+    </div>
     <div class="player-footer">
       <span id="queueLabel">MY MUSIC</span>
       <div class="audio-toggles">
         <button type="button" id="levelToggleBtn" class="chip-toggle" aria-pressed="false" title="Match loudness across tracks">Level: Off</button>
         <button type="button" id="crossfadeToggleBtn" class="chip-toggle" aria-pressed="false" title="Crossfade between tracks">Crossfade: Off</button>
       </div>
-      <span class="version">ALPHA 1.9.6</span>
+      <span class="version">ALPHA 1.9.8</span>
       <label>VOL <input id="volume" type="range" min="0" max="1" step=".01" value=".85"></label>
     </div>
   </div>

@@ -3,7 +3,19 @@
   "short_name": "MyMusic",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#111018",
-  "theme_color": "#111018",
-  "icons": []
+  "background_color": "#140915",
+  "theme_color": "#140915",
+  "icons": [
+    {
+      "src": "./logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
