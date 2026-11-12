@@ -1,12 +1,9 @@
-# MyMusic Player — Alpha 1.5
+# MyMusic Player — Alpha 1.8
 
-## Folder browser repair and redesign
-- Replaced the custom JavaScript accordion toggle with native HTML `details` / `summary`, so opening and closing works without relying on a JavaScript click handler.
-- Redesigned the collapsed selector as a compact neutral folder row, separate from the All songs button.
-- Folder navigation keeps the accordion open; All songs returns to the root and closes it.
-- Folder rows and breadcrumbs use explicit button types and clearer spacing.
-- Player version label updated to ALPHA 1.5.
-
-## Retained
-- Silent Google Drive reauthorization attempt from Alpha 1.3/1.4 where Google's session permits.
-- Supported audio formats and existing playback features.
+- Modal stops just above the player; player remains clickable during browsing.
+- Modal height measures player position and updates on resize.
+- Browse folders button is a compact purple pill beside All songs.
+- JPG/JPEG/PNG/WebP images in the same Drive folder as tracks are used as artwork; preferred names artwork, cover, folder, then front, otherwise first image alphabetically.
+- Images are not treated as audio tracks.
+- Media Session receives cover art where supported.
+- Version label ALPHA 1.8.

@@ -1,4 +1,4 @@
-// MyMusic Alpha 1.5 — folder accordion, multi-format playback, remembered Drive authorization.
+// MyMusic Alpha 1.8 — folder accordion, multi-format playback, remembered Drive authorization.
 const CONFIG = {
   CLIENT_ID: "249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",
   ROOT_FOLDER_ID: "1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"
@@ -94,35 +94,53 @@ function formatCounts(){
   const labels=["mp3","wav","m4a","aac","flac","mp4"].filter(x=>counts[x]).map(x=>`${x.toUpperCase()}: ${counts[x]}`);
   $("counts").textContent=`${tracks.length} audio files found${labels.length?" · "+labels.join(" · "):""}`;
 }
+let folderModalReturnFocus=null;
 function isInCurrentFolder(t){
   const p=Array.isArray(t.path)?t.path:[];
   return p.length>=currentFolderPath.length && currentFolderPath.every((part,i)=>p[i]===part);
 }
+function sizeFolderModal(){
+  const playerTop=$("player").getBoundingClientRect().top;
+  $("folderModal").style.setProperty("--player-top",`${Math.max(180,playerTop)}px`);
+}
+function openFolderModal(){
+  folderModalReturnFocus=document.activeElement;
+  sizeFolderModal();
+  $("folderModal").hidden=false;
+  $("folderToggle").setAttribute("aria-expanded","true");
+  document.body.classList.add("folder-modal-open");
+  $("folderClose").focus();
+}
+function closeFolderModal(){
+  $("folderModal").hidden=true;
+  $("folderToggle").setAttribute("aria-expanded","false");
+  document.body.classList.remove("folder-modal-open");
+  if(folderModalReturnFocus?.focus)folderModalReturnFocus.focus();
+}
 function renderFolderBrowser(){
   const prefix=currentFolderPath.length;
   const folders=[...new Set(tracks.map(t=>(Array.isArray(t.path)?t.path:[])[prefix]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  const accordion=$("folderAccordion");
-  $("folderSummary").textContent=folders.length?`${folders.length} folder${folders.length===1?"":"s"} here`:"No folders found";
+  $("folderSummary").textContent=folders.length?`${folders.length} folders available`:"No folders found";
   $("breadcrumbs").innerHTML=[
     `<button type="button" data-depth="0">MyMusic</button>`,
     ...currentFolderPath.map((part,i)=>`<span class="crumb-sep">›</span><button type="button" data-depth="${i+1}">${esc(part)}</button>`)
   ].join("");
   $("breadcrumbs").querySelectorAll("button").forEach(b=>b.onclick=()=>{
-    currentFolderPath=currentFolderPath.slice(0,Number(b.dataset.depth));renderTracks();accordion.open=true;
+    currentFolderPath=currentFolderPath.slice(0,Number(b.dataset.depth));renderTracks();
   });
   $("folderList").innerHTML=folders.length?folders.map(name=>{
     const folderTracks=tracks.filter(t=>isInCurrentFolder(t)&&(t.path||[])[prefix]===name);
-    return `<button type="button" class="folder-row" data-folder="${esc(name)}"><span class="folder-icon">📁</span><span class="folder-label">${esc(name)}</span><span class="folder-count">${folderTracks.length} ${folderTracks.length===1?"track":"tracks"} ›</span></button>`;
+    return `<button type="button" class="folder-row" data-folder="${esc(name)}"><span class="folder-icon">📁</span><span class="folder-label">${esc(name)}</span><span class="folder-count">${folderTracks.length} ${folderTracks.length===1?"track":"tracks"} <span aria-hidden="true">›</span></span></button>`;
   }).join(""):`<div class="folder-empty">No subfolders at this level.</div>`;
   $("folderList").querySelectorAll(".folder-row").forEach(el=>el.onclick=()=>{
-    currentFolderPath.push(el.dataset.folder);renderTracks();accordion.open=true;
+    currentFolderPath.push(el.dataset.folder);renderTracks();
   });
-  $("allSongsBtn").onclick=()=>{
-    currentFolderPath=[];activeFilter="all";
-    document.querySelectorAll(".filter").forEach(x=>x.classList.toggle("active",x.dataset.filter==="all"));
-    $("searchInput").value="";renderTracks();accordion.open=false;
-  };
 }
+$("folderToggle").onclick=openFolderModal;
+$("folderClose").onclick=closeFolderModal;
+$("folderModal").addEventListener("click",e=>{if(e.target.closest("[data-close-folder]"))closeFolderModal()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("folderModal").hidden)closeFolderModal()});
+window.addEventListener("resize",()=>{if(!$("folderModal").hidden)sizeFolderModal()});
 function renderTracks(){
   const term=$("searchInput").value.trim().toLowerCase();
   renderFolderBrowser();
@@ -133,7 +151,12 @@ function renderTracks(){
   $("trackList").querySelectorAll(".track").forEach(el=>el.onclick=()=>playTrackById(el.dataset.id));
   $("emptyState").hidden=visible.length>0||$("folderList").querySelectorAll(".folder-row").length>0;
   $("emptyState").textContent="No tracks in this folder. Open a subfolder or choose All songs.";
-}async function scanLibrary(){
+}
+$("allSongsBtn").onclick=()=>{
+  currentFolderPath=[];activeFilter="all";
+  document.querySelectorAll(".filter").forEach(x=>x.classList.toggle("active",x.dataset.filter==="all"));
+  $("searchInput").value="";renderTracks();closeFolderModal();
+};async function scanLibrary(){
   if(!accessToken)return;setStatus("Scanning Drive…");$("trackList").innerHTML="";
   try{tracks=await walkFolder(CONFIG.ROOT_FOLDER_ID);tracks.sort((a,b)=>a.path.join("/").localeCompare(b.path.join("/"))||a.name.localeCompare(b.name));queue=[...tracks];formatCounts();renderTracks();setStatus("Library scan complete");}
   catch(e){console.error(e);setStatus("Could not scan folder");alert("Couldn't scan MyMusic. Check Drive API access.\\n\\n"+e.message)}
@@ -146,8 +169,18 @@ async function loadArtwork(track){
   if(currentArtUrl){URL.revokeObjectURL(currentArtUrl);currentArtUrl=null}
   $("artwork").hidden=true;$("artPlaceholder").hidden=false;
   const files=await driveList(track.parentId);
-  const art=files.find(f=>/^(artwork|cover|folder)\.(jpe?g|png|webp)$/i.test(f.name))||files.find(f=>/\.(jpe?g|png|webp)$/i.test(f.name));
-  if(art){const blob=await downloadFile(art.id);currentArtUrl=URL.createObjectURL(blob);$("artwork").src=currentArtUrl;$("artwork").hidden=false;$("artPlaceholder").hidden=true}
+  const images=files.filter(f=>/\.(jpe?g|png|webp)$/i.test(f.name));
+  const preferred=["artwork","cover","folder"];
+  const art=preferred.map(label=>images.find(f=>new RegExp(`^${label}\\\\.(jpe?g|png|webp)$`,"i").test(f.name))).find(Boolean)
+    ||images.find(f=>/^front\\.(jpe?g|png|webp)$/i.test(f.name))
+    ||images[0];
+  if(art){
+    const blob=await downloadFile(art.id);
+    currentArtUrl=URL.createObjectURL(blob);
+    $("artwork").src=currentArtUrl;
+    $("artwork").hidden=false;
+    $("artPlaceholder").hidden=true;
+  }
 }
 async function playTrackById(id){
   const idx=queue.findIndex(t=>t.id===id);if(idx<0)return;currentIndex=idx;

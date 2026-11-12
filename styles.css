@@ -54,3 +54,76 @@
 .folder-count{font-size:10px;color:var(--muted);white-space:nowrap}
 .folder-empty{padding:12px 8px;color:var(--muted);font-size:11px}
 .folder-toolbar>.small-btn{align-self:center}
+
+/* Alpha 1.6 — simplified, reliable folder disclosure */
+.folder-toolbar{display:flex;align-items:center;gap:10px;margin:10px 0}
+.folder-toggle{appearance:none;display:flex;align-items:center;gap:11px;flex:1;min-width:0;min-height:54px;padding:9px 13px;background:#1c1925;border:1px solid var(--line);border-radius:13px;color:#f8f5ff;text-align:left}
+.folder-toggle:hover{background:#24202f;border-color:#665580}
+.folder-toggle-icon{display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:9px;background:#392f4d;color:#c5afff;font-size:17px}
+.folder-toggle-copy{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
+.folder-toggle-copy strong{font-size:12px;line-height:1.2}
+.folder-toggle-copy small{font-size:10px;line-height:1.2;color:var(--muted)}
+.folder-toggle-state{display:flex;align-items:center;gap:8px;flex:none;color:#b8a6e9;font-size:9px;letter-spacing:1px}
+.folder-chevron{font-size:18px;line-height:1;transition:transform .15s ease}
+.folder-toggle[aria-expanded="true"] .folder-chevron{transform:rotate(90deg)}
+.folder-panel{padding:10px 12px 12px;margin:-2px 0 12px;border:1px solid var(--line);border-radius:13px;background:#191622}
+.folder-panel[hidden]{display:none}
+.folder-panel .breadcrumbs{margin:0 0 9px}
+.folder-list{display:flex;flex-direction:column;gap:5px;max-height:280px;overflow:auto;margin:0}
+.folder-row{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:10px;background:#211d2b;color:#fff;text-align:left;cursor:pointer}
+.folder-row:hover{background:#302641}
+.folder-row .folder-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:650}
+.folder-row .folder-count{font-size:10px;color:var(--muted);white-space:nowrap}
+.folder-empty{padding:12px 8px;color:var(--muted);font-size:11px}
+.folder-toolbar>.small-btn{flex:none;align-self:center}
+
+/* Alpha 1.7 — folder browser modal */
+.folder-modal[hidden]{display:none}
+.folder-modal{position:fixed;z-index:8;inset:0;display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px 0}
+.folder-modal-backdrop{position:absolute;inset:0;background:rgba(8,6,13,.78);backdrop-filter:blur(5px)}
+.folder-dialog{position:relative;z-index:1;display:flex;flex-direction:column;width:min(900px,100%);height:min(620px,calc(100vh - 280px));min-height:220px;max-height:calc(100vh - 280px);padding:18px;border:1px solid #514465;border-radius:20px;background:#1b1725;box-shadow:0 24px 80px rgba(0,0,0,.55);overflow:hidden}
+.folder-dialog-header{display:flex;align-items:center;justify-content:space-between;gap:14px;flex:none;margin-bottom:12px}
+.folder-dialog-header .eyebrow{margin:0 0 5px}
+.folder-dialog-header h2{font-size:22px;letter-spacing:-.7px;margin:0}
+.folder-close{width:36px;height:36px;flex:none;padding:0;border:1px solid #514465;border-radius:50%;background:#292235;color:#fff;font-size:23px;line-height:1}
+.folder-dialog .breadcrumbs{flex:none;display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.folder-dialog .breadcrumbs button{padding:6px 8px;background:#292235;color:#e9e0fa;font-size:11px;border-radius:7px}
+.folder-dialog .breadcrumbs button:last-child{background:#403453;color:#fff}
+.folder-dialog .folder-list{display:flex;flex-direction:column;gap:6px;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 3px 8px 0}
+.folder-dialog .folder-row{display:flex;align-items:center;gap:11px;width:100%;flex:none;padding:11px 12px;border:1px solid #332b40;border-radius:11px;background:#24202e;color:#fff;text-align:left;cursor:pointer}
+.folder-dialog .folder-row:hover{background:#30283d;border-color:#65527f}
+.folder-dialog .folder-icon{width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:9px;background:#403453;color:#c5afff}
+.folder-dialog .folder-label{flex:1;min-width:0;font-size:13px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.folder-dialog .folder-count{font-size:10px;color:var(--muted);white-space:nowrap}
+.folder-dialog .folder-empty{padding:18px 10px;color:var(--muted);font-size:12px}
+body.folder-modal-open{overflow:hidden}
+@media(max-width:600px){
+ .folder-modal{padding:4vh 10px 0}
+ .folder-dialog{height:calc(100vh - 265px);max-height:calc(100vh - 265px);min-height:200px;padding:14px;border-radius:17px}
+ .folder-dialog-header h2{font-size:19px}
+}
+@media(min-width:700px){.folder-dialog{height:min(620px,calc(100vh - 290px));max-height:calc(100vh - 290px)}}
+
+/* Alpha 1.8 — modal stops above the player; player remains clickable */
+.folder-modal{inset:0 0 auto;padding:0;bottom:calc(100vh - var(--player-top, 600px) + 10px);align-items:stretch}
+.folder-modal-backdrop{position:absolute;inset:0}
+.folder-dialog{width:min(900px,calc(100% - 32px));height:100%;min-height:0;max-height:none;margin:0 auto;border-radius:0 0 20px 20px}
+.folder-modal .folder-dialog{overflow:hidden}
+.folder-dialog .folder-list{flex:1;min-height:0}
+.folder-dialog-header{padding-top:16px}
+.folder-toolbar{display:flex;align-items:center;gap:9px;margin:10px 0}
+.folder-toggle{appearance:none;display:flex;align-items:center;justify-content:center;gap:8px;flex:none;min-height:38px;padding:8px 13px;border:1px solid #9875e7;border-radius:999px;background:#a58af5;color:#181322;font-size:11px;font-weight:750;white-space:nowrap;cursor:pointer}
+.folder-toggle:hover{background:#b69fff;border-color:#b69fff}
+.folder-toggle-icon{font-size:14px;line-height:1}
+.folder-toggle-copy{display:block;min-width:0}
+.folder-toggle-copy strong{font-size:11px;line-height:1.1}
+.folder-toggle-copy small{display:none}
+.folder-toggle-state{display:none}
+.folder-toolbar>.small-btn{min-height:38px;padding:8px 13px;border-radius:999px}
+@media(max-width:600px){
+ .folder-modal{bottom:calc(100vh - var(--player-top, 560px) + 8px)}
+ .folder-dialog{width:100%;border-radius:0 0 16px 16px;padding:12px}
+ .folder-dialog-header{padding-top:10px}
+ .folder-toolbar{gap:7px}
+ .folder-toggle,.folder-toolbar>.small-btn{min-height:36px;padding:7px 11px}
+}
