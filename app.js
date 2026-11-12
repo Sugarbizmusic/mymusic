@@ -1,4 +1,4 @@
-// MyMusic Alpha 1.4 — folder accordion, multi-format playback, remembered Drive authorization.
+// MyMusic Alpha 1.5 — folder accordion, multi-format playback, remembered Drive authorization.
 const CONFIG = {
   CLIENT_ID: "249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",
   ROOT_FOLDER_ID: "1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"
@@ -101,34 +101,26 @@ function isInCurrentFolder(t){
 function renderFolderBrowser(){
   const prefix=currentFolderPath.length;
   const folders=[...new Set(tracks.map(t=>(Array.isArray(t.path)?t.path:[])[prefix]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  const panel=$("folderPanel"),toggle=$("folderToggle");
+  const accordion=$("folderAccordion");
   $("folderSummary").textContent=folders.length?`${folders.length} folder${folders.length===1?"":"s"} here`:"No folders found";
   $("breadcrumbs").innerHTML=[
-    `<button data-depth="0">MyMusic</button>`,
-    ...currentFolderPath.map((part,i)=>`<span class="crumb-sep">›</span><button data-depth="${i+1}">${esc(part)}</button>`)
+    `<button type="button" data-depth="0">MyMusic</button>`,
+    ...currentFolderPath.map((part,i)=>`<span class="crumb-sep">›</span><button type="button" data-depth="${i+1}">${esc(part)}</button>`)
   ].join("");
   $("breadcrumbs").querySelectorAll("button").forEach(b=>b.onclick=()=>{
-    currentFolderPath=currentFolderPath.slice(0,Number(b.dataset.depth));renderTracks();
+    currentFolderPath=currentFolderPath.slice(0,Number(b.dataset.depth));renderTracks();accordion.open=true;
   });
   $("folderList").innerHTML=folders.length?folders.map(name=>{
     const folderTracks=tracks.filter(t=>isInCurrentFolder(t)&&(t.path||[])[prefix]===name);
     return `<button type="button" class="folder-row" data-folder="${esc(name)}"><span class="folder-icon">📁</span><span class="folder-label">${esc(name)}</span><span class="folder-count">${folderTracks.length} ${folderTracks.length===1?"track":"tracks"} ›</span></button>`;
   }).join(""):`<div class="folder-empty">No subfolders at this level.</div>`;
   $("folderList").querySelectorAll(".folder-row").forEach(el=>el.onclick=()=>{
-    currentFolderPath.push(el.dataset.folder);renderTracks();
-    // Keep the accordion open while navigating the hierarchy.
-    panel.hidden=false;toggle.setAttribute("aria-expanded","true");toggle.querySelector(".folder-toggle-hint").textContent="HIDE";
+    currentFolderPath.push(el.dataset.folder);renderTracks();accordion.open=true;
   });
-  toggle.onclick=()=>{
-    const opening=panel.hidden;
-    panel.hidden=!opening;
-    toggle.setAttribute("aria-expanded",String(opening));
-    toggle.querySelector(".folder-toggle-hint").textContent=opening?"HIDE":"SHOW";
-  };
   $("allSongsBtn").onclick=()=>{
     currentFolderPath=[];activeFilter="all";
     document.querySelectorAll(".filter").forEach(x=>x.classList.toggle("active",x.dataset.filter==="all"));
-    $("searchInput").value="";renderTracks();
+    $("searchInput").value="";renderTracks();accordion.open=false;
   };
 }
 function renderTracks(){

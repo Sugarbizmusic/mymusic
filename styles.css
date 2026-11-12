@@ -31,3 +31,26 @@
 .folder-list{max-height:260px;overflow-y:auto}
 .folder-row{width:100%;border:0;text-align:left}
 .folder-empty{padding:12px 10px;color:var(--muted);font-size:11px}
+
+/* Alpha 1.5: native details/summary folder accordion */
+.folder-toolbar{display:flex;align-items:stretch;gap:9px;margin:8px 0 10px}
+.folder-browser{flex:1;min-width:0;margin:0;padding:0;border:1px solid var(--line);border-radius:14px;background:#191622;overflow:hidden}
+.folder-summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 12px;cursor:pointer;user-select:none}
+.folder-summary::-webkit-details-marker{display:none}
+.folder-summary-icon{width:30px;height:30px;flex:none;display:grid;place-items:center;border-radius:9px;background:#392f4d;color:#c5afff}
+.folder-summary-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.folder-summary-copy strong{font-size:12px;line-height:1.2}
+.folder-summary-copy small{font-size:10px;line-height:1.2;color:var(--muted)}
+.folder-summary-state{display:flex;align-items:center;gap:5px;white-space:nowrap;color:#b8a6e9;font-size:9px;letter-spacing:1px}
+.folder-chevron{display:inline-block;font-size:19px;line-height:10px;transition:transform .15s ease}
+.folder-browser[open] .folder-chevron{transform:rotate(90deg)}
+.folder-panel{padding:9px 12px 12px;border-top:1px solid var(--line)}
+.folder-panel .breadcrumbs{margin:0 0 8px}
+.folder-list{display:flex;flex-direction:column;gap:5px;max-height:260px;overflow:auto;margin:0}
+.folder-row{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:10px;background:#211d2b;color:#fff;text-align:left;cursor:pointer}
+.folder-row:active{background:#302641}
+.folder-icon{width:28px;height:28px;flex:none;display:grid;place-items:center;border-radius:8px;background:#392f4d;color:#c5afff}
+.folder-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:650}
+.folder-count{font-size:10px;color:var(--muted);white-space:nowrap}
+.folder-empty{padding:12px 8px;color:var(--muted);font-size:11px}
+.folder-toolbar>.small-btn{align-self:center}

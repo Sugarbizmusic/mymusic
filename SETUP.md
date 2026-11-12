@@ -1,16 +1,12 @@
-# MyMusic Player Alpha 1.4
+# MyMusic Player Alpha 1.5
 
-Replace these files in the root of `sugarbizmusic/mymusic`:
+Replace the five app files in the root of `sugarbizmusic/mymusic`:
 - `index.html`
 - `app.js`
 - `styles.css`
 - `manifest.webmanifest`
 - `sw.js`
 
-Optionally upload `CHANGELOG.md`.
+The Google OAuth Client ID and MyMusic Drive root folder ID are preserved in `app.js`.
 
-The configured Google OAuth Client ID and MyMusic Drive root folder ID are preserved in `app.js`. Do not replace them.
-
-Commit to `main`, wait for GitHub Pages to redeploy, then hard-refresh the site. The folder browser is now a collapsed-by-default accordion labeled “Browse folders”. Tap it to expand.
-
-Alpha 1.4 retains the automatic silent Google Drive authorization attempt. If Google cannot silently authorize, the app will still request a manual connection.
+Commit to `main`, wait for GitHub Pages, then hard-refresh the site. The folder selector is now a native collapsed-by-default accordion labeled “Browse folders”. Click/tap that row to open it. The All songs button is separate.

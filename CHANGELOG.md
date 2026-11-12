@@ -1,14 +1,12 @@
-# MyMusic Player — Alpha 1.4
+# MyMusic Player — Alpha 1.5
 
-## Folder navigation refinement
-- Folder browser is now collapsed by default under a compact “Browse folders” accordion.
-- Click/tap the row to expand or collapse the folder list.
-- Opening a folder keeps the accordion expanded and updates breadcrumbs.
-- Folder counts include tracks in nested subfolders.
-- “All songs” remains a separate shortcut to the complete library.
-- Improved folder list rendering and empty-state handling.
+## Folder browser repair and redesign
+- Replaced the custom JavaScript accordion toggle with native HTML `details` / `summary`, so opening and closing works without relying on a JavaScript click handler.
+- Redesigned the collapsed selector as a compact neutral folder row, separate from the All songs button.
+- Folder navigation keeps the accordion open; All songs returns to the root and closes it.
+- Folder rows and breadcrumbs use explicit button types and clearer spacing.
+- Player version label updated to ALPHA 1.5.
 
 ## Retained
-- Alpha 1.3 silent Google Drive reauthorization attempt (where Google's session permits).
-- Multi-format audio support.
-- Player version label, now ALPHA 1.4.
+- Silent Google Drive reauthorization attempt from Alpha 1.3/1.4 where Google's session permits.
+- Supported audio formats and existing playback features.
