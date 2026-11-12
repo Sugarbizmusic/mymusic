@@ -1,16 +1,16 @@
-# MyMusic Player Alpha 1.3
+# MyMusic Player Alpha 1.4
 
-Replace the app files in the root of `sugarbizmusic/mymusic` with the files in this package:
+Replace these files in the root of `sugarbizmusic/mymusic`:
 - `index.html`
 - `app.js`
 - `styles.css`
 - `manifest.webmanifest`
 - `sw.js`
 
-Optionally upload `CHANGELOG.md` for reference.
+Optionally upload `CHANGELOG.md`.
 
-Your configured Google OAuth Client ID and MyMusic Drive root folder ID are retained in `app.js`. Do not replace them with placeholders.
+The configured Google OAuth Client ID and MyMusic Drive root folder ID are preserved in `app.js`. Do not replace them.
 
-After committing to `main`, wait for GitHub Pages to redeploy, then hard-refresh the site. On iPhone, fully close and reopen the web app if it still displays the prior version.
+Commit to `main`, wait for GitHub Pages to redeploy, then hard-refresh the site. The folder browser is now a collapsed-by-default accordion labeled “Browse folders”. Tap it to expand.
 
-Alpha 1.3 includes folder navigation, the player version label, and automatic silent Google Drive reauthorization where Google's session permits it. It does not store your Google password or access token.
+Alpha 1.4 retains the automatic silent Google Drive authorization attempt. If Google cannot silently authorize, the app will still request a manual connection.

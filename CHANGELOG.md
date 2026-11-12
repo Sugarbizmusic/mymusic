@@ -1,10 +1,14 @@
-# MyMusic Player — Alpha 1.3
+# MyMusic Player — Alpha 1.4
 
-## Added
-- Silent Google Drive authorization attempt on app startup after the user has previously connected.
-- Remembers the authorization preference in browser local storage, but never stores Google access tokens or passwords.
-- If Google cannot silently authorize (for example, the Google session expired, consent was revoked, or browser privacy settings block it), the app shows the normal Connect Google Drive screen.
-- Retains the Alpha 1.2 folder browser, breadcrumb navigation, All songs shortcut, and small player version label (now ALPHA 1.3).
+## Folder navigation refinement
+- Folder browser is now collapsed by default under a compact “Browse folders” accordion.
+- Click/tap the row to expand or collapse the folder list.
+- Opening a folder keeps the accordion expanded and updates breadcrumbs.
+- Folder counts include tracks in nested subfolders.
+- “All songs” remains a separate shortcut to the complete library.
+- Improved folder list rendering and empty-state handling.
 
-## Important behavior
-Google access tokens are short-lived. The app requests a fresh token from Google on startup rather than saving a token locally. Silent reconnection depends on Google's session and browser privacy settings; occasional manual reconnection may still be required.
+## Retained
+- Alpha 1.3 silent Google Drive reauthorization attempt (where Google's session permits).
+- Multi-format audio support.
+- Player version label, now ALPHA 1.4.

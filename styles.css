@@ -14,3 +14,20 @@
 .folder-count{font-size:10px;color:var(--muted);white-space:nowrap}
 .version{font-size:8px;letter-spacing:1px;color:#777080;white-space:nowrap}
 @media(min-width:700px){.folder-browser{padding:14px}}
+
+/* Alpha 1.4: compact, collapsed-by-default folder accordion */
+.folder-browser{padding:8px 10px}
+.folder-toolbar{gap:8px}
+.folder-toggle{flex:1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 8px;background:transparent;color:#f8f5ff;text-align:left;border:0;cursor:pointer}
+.folder-toggle-left{display:flex;align-items:center;gap:10px;min-width:0}
+.folder-toggle-icon{width:24px;height:24px;display:grid;place-items:center;border-radius:7px;background:#392f4d;color:#c5afff;font-size:16px;transition:transform .18s ease}
+.folder-toggle[aria-expanded="true"] .folder-toggle-icon{transform:rotate(90deg)}
+.folder-toggle strong{display:block;font-size:12px;font-weight:700}
+.folder-toggle small{display:block;margin-top:2px;color:var(--muted);font-size:10px}
+.folder-toggle-hint{font-size:9px;letter-spacing:1px;color:#a99bbd}
+.folder-panel{padding:8px 4px 2px}
+.folder-panel[hidden]{display:none}
+.folder-panel .breadcrumbs{margin:2px 0 9px}
+.folder-list{max-height:260px;overflow-y:auto}
+.folder-row{width:100%;border:0;text-align:left}
+.folder-empty{padding:12px 10px;color:var(--muted);font-size:11px}

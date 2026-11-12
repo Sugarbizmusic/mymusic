@@ -1,4 +1,4 @@
-// MyMusic Alpha 1.3 — folder navigation, multi-format playback, remembered Drive authorization.
+// MyMusic Alpha 1.4 — folder accordion, multi-format playback, remembered Drive authorization.
 const CONFIG = {
   CLIENT_ID: "249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",
   ROOT_FOLDER_ID: "1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"
@@ -95,12 +95,14 @@ function formatCounts(){
   $("counts").textContent=`${tracks.length} audio files found${labels.length?" · "+labels.join(" · "):""}`;
 }
 function isInCurrentFolder(t){
-  const p=t.path||[];
+  const p=Array.isArray(t.path)?t.path:[];
   return p.length>=currentFolderPath.length && currentFolderPath.every((part,i)=>p[i]===part);
 }
 function renderFolderBrowser(){
   const prefix=currentFolderPath.length;
-  const folders=[...new Set(tracks.filter(isInCurrentFolder).map(t=>(t.path||[])[prefix]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const folders=[...new Set(tracks.map(t=>(Array.isArray(t.path)?t.path:[])[prefix]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const panel=$("folderPanel"),toggle=$("folderToggle");
+  $("folderSummary").textContent=folders.length?`${folders.length} folder${folders.length===1?"":"s"} here`:"No folders found";
   $("breadcrumbs").innerHTML=[
     `<button data-depth="0">MyMusic</button>`,
     ...currentFolderPath.map((part,i)=>`<span class="crumb-sep">›</span><button data-depth="${i+1}">${esc(part)}</button>`)
@@ -108,25 +110,38 @@ function renderFolderBrowser(){
   $("breadcrumbs").querySelectorAll("button").forEach(b=>b.onclick=()=>{
     currentFolderPath=currentFolderPath.slice(0,Number(b.dataset.depth));renderTracks();
   });
-  $("allSongsBtn").onclick=()=>{currentFolderPath=[];activeFilter="all";document.querySelectorAll(".filter").forEach(x=>x.classList.toggle("active",x.dataset.filter==="all"));$("searchInput").value="";renderTracks()};
-  $("folderList").innerHTML=folders.map(name=>{
+  $("folderList").innerHTML=folders.length?folders.map(name=>{
     const folderTracks=tracks.filter(t=>isInCurrentFolder(t)&&(t.path||[])[prefix]===name);
-    return `<div class="folder-row" data-folder="${esc(name)}"><span class="folder-icon">📁</span><span class="folder-label">${esc(name)}</span><span class="folder-count">${folderTracks.length} ${folderTracks.length===1?"track":"tracks"} ›</span></div>`;
-  }).join("");
-  $("folderList").querySelectorAll(".folder-row").forEach(el=>el.onclick=()=>{currentFolderPath.push(el.dataset.folder);renderTracks()});
+    return `<button type="button" class="folder-row" data-folder="${esc(name)}"><span class="folder-icon">📁</span><span class="folder-label">${esc(name)}</span><span class="folder-count">${folderTracks.length} ${folderTracks.length===1?"track":"tracks"} ›</span></button>`;
+  }).join(""):`<div class="folder-empty">No subfolders at this level.</div>`;
+  $("folderList").querySelectorAll(".folder-row").forEach(el=>el.onclick=()=>{
+    currentFolderPath.push(el.dataset.folder);renderTracks();
+    // Keep the accordion open while navigating the hierarchy.
+    panel.hidden=false;toggle.setAttribute("aria-expanded","true");toggle.querySelector(".folder-toggle-hint").textContent="HIDE";
+  });
+  toggle.onclick=()=>{
+    const opening=panel.hidden;
+    panel.hidden=!opening;
+    toggle.setAttribute("aria-expanded",String(opening));
+    toggle.querySelector(".folder-toggle-hint").textContent=opening?"HIDE":"SHOW";
+  };
+  $("allSongsBtn").onclick=()=>{
+    currentFolderPath=[];activeFilter="all";
+    document.querySelectorAll(".filter").forEach(x=>x.classList.toggle("active",x.dataset.filter==="all"));
+    $("searchInput").value="";renderTracks();
+  };
 }
 function renderTracks(){
   const term=$("searchInput").value.trim().toLowerCase();
   renderFolderBrowser();
   const visible=tracks.filter(t=>isInCurrentFolder(t)&&(t.path||[]).length===currentFolderPath.length)
     .filter(t=>(activeFilter==="all"||t.extension===activeFilter||(activeFilter==="m4a"&&t.extension==="aac")))
-    .filter(t=>{const i=trackInfo(t);return `${i.title} ${i.artist} ${i.release} ${t.path.join(" ")}`.toLowerCase().includes(term)});
+    .filter(t=>{const i=trackInfo(t);return `${i.title} ${i.artist} ${i.release} ${(t.path||[]).join(" ")}`.toLowerCase().includes(term)});
   $("trackList").innerHTML=visible.map(t=>{const i=trackInfo(t),idx=queue.findIndex(q=>q.id===t.id);return `<div class="track ${idx===currentIndex?"current":""}" data-id="${esc(t.id)}"><div class="thumb">♫</div><div class="track-info"><div class="track-name">${esc(i.title)}</div><div class="track-meta">${esc(i.subtitle)}</div></div><span class="format">${t.extension.toUpperCase()}</span><span>▶</span></div>`}).join("");
   $("trackList").querySelectorAll(".track").forEach(el=>el.onclick=()=>playTrackById(el.dataset.id));
-  $("emptyState").hidden=visible.length>0||$("folderList").children.length>0;
-  $("emptyState").textContent=$("folderList").children.length?"No tracks directly in this folder. Open a subfolder or choose All songs.":"No supported audio files found here.";
-}
-async function scanLibrary(){
+  $("emptyState").hidden=visible.length>0||$("folderList").querySelectorAll(".folder-row").length>0;
+  $("emptyState").textContent="No tracks in this folder. Open a subfolder or choose All songs.";
+}async function scanLibrary(){
   if(!accessToken)return;setStatus("Scanning Drive…");$("trackList").innerHTML="";
   try{tracks=await walkFolder(CONFIG.ROOT_FOLDER_ID);tracks.sort((a,b)=>a.path.join("/").localeCompare(b.path.join("/"))||a.name.localeCompare(b.name));queue=[...tracks];formatCounts();renderTracks();setStatus("Library scan complete");}
   catch(e){console.error(e);setStatus("Could not scan folder");alert("Couldn't scan MyMusic. Check Drive API access.\\n\\n"+e.message)}
