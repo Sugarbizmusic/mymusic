@@ -1,3 +1,8 @@
+## Alpha 1.9.2
+- Fixed stale Alpha 1.8 service-worker cache namespace.
+- Service worker now activates immediately, claims open tabs, and prefers fresh app assets.
+- App explicitly requests a service-worker update on load.
+
 # MyMusic Alpha 1.9
 
 - Rebuilt folder navigation around the actual Google Drive folder hierarchy, including empty folders and breadcrumb navigation.
