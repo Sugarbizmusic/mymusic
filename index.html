@@ -28,7 +28,6 @@
     <div><p class="eyebrow">THE COLLECTION</p><h1>Your library</h1></div>
     <button id="refreshBtn" class="outline">↻ Refresh</button>
   </div>
-  <input id="searchInput" class="search" type="search" placeholder="Search tracks, projects, albums">
   <div id="status" class="status">Ready</div>
   <div id="counts" class="counts"></div>
 
@@ -37,11 +36,9 @@
       <span class="folder-toggle-icon">📁</span>
       <span class="folder-toggle-copy"><strong>Browse folders</strong></span>
     </button>
-    <button type="button" id="allSongsBtn" class="outline small-btn">All songs</button>
-    <button type="button" id="recentBtn" class="outline small-btn" aria-pressed="false">Recent songs</button>
+    <button type="button" id="allSongsBtn" class="outline small-btn" aria-haspopup="dialog">All songs</button>
+    <button type="button" id="recentBtn" class="outline small-btn" aria-haspopup="dialog">Recent songs</button>
   </div>
-  <div id="trackList" class="track-list"></div>
-  <div id="emptyState" class="empty">No supported audio files found. Add MP3, WAV, M4A, AAC, FLAC or MP4 files inside MyMusic, then refresh.</div>
 </section>
 </main>
 <div id="folderModal" class="folder-modal" hidden>
@@ -49,9 +46,10 @@
   <section class="folder-dialog" role="dialog" aria-modal="true" aria-labelledby="folderModalTitle">
     <div class="folder-dialog-header">
       <div><p class="eyebrow">YOUR COLLECTION</p><h2 id="folderModalTitle">Browse folders</h2></div>
-      <button type="button" id="folderClose" class="folder-close" aria-label="Close folder browser">×</button>
+      <button type="button" id="folderClose" class="folder-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div id="breadcrumbs" class="breadcrumbs"></div>
+    <input id="pickerSearch" class="search picker-search" type="search" placeholder="Search songs" hidden>
     <div id="folderList" class="folder-list"></div>
   </section>
 </div>
@@ -88,18 +86,17 @@
     <div class="seek-wrap"><input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek"><div class="times"><span id="elapsed">0:00</span><span id="duration">0:00</span></div></div>
     <div class="controls">
       <button id="backBtn" aria-label="Previous track"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="5" y="5" width="2.4" height="14" rx="1"/><path d="M19 5.6v12.8a.8.8 0 0 1-1.2.7L8.6 12.7a.8.8 0 0 1 0-1.4l9.2-6.4a.8.8 0 0 1 1.2.7z"/></svg></button>
-      <button id="rewindBtn" class="skip15" aria-label="Rewind 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 9.5A8 8 0 1 1 4 12.5"/><path d="M4.2 4.8v4.9h4.9"/><text x="12.6" y="15.6" text-anchor="middle" font-size="7.4" font-weight="800" fill="currentColor" stroke="none" font-family="Plus Jakarta Sans, sans-serif">15</text></svg></button>
+      <button id="rewindBtn" class="skip15" aria-label="Rewind 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 9.5A8 8 0 1 1 4 12.5"/><path d="M4.2 4.8v4.9h4.9"/><text x="12" y="12.3" text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="800" fill="currentColor" stroke="none" font-family="Plus Jakarta Sans, sans-serif">15</text></svg></button>
       <button id="playBtn" class="play" aria-label="Play"></button>
-      <button id="forwardBtn" class="skip15" aria-label="Forward 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 9.5A8 8 0 1 0 20 12.5"/><path d="M19.8 4.8v4.9h-4.9"/><text x="11.4" y="15.6" text-anchor="middle" font-size="7.4" font-weight="800" fill="currentColor" stroke="none" font-family="Plus Jakarta Sans, sans-serif">15</text></svg></button>
+      <button id="forwardBtn" class="skip15" aria-label="Forward 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 9.5A8 8 0 1 0 20 12.5"/><path d="M19.8 4.8v4.9h-4.9"/><text x="12" y="12.3" text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="800" fill="currentColor" stroke="none" font-family="Plus Jakarta Sans, sans-serif">15</text></svg></button>
       <button id="nextBtn" aria-label="Next track"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="16.6" y="5" width="2.4" height="14" rx="1"/><path d="M5 5.6v12.8a.8.8 0 0 0 1.2.7l9.2-6.4a.8.8 0 0 0 0-1.4L6.2 4.9a.8.8 0 0 0-1.2.7z"/></svg></button>
     </div>
     <div class="player-footer">
       <span id="queueLabel">MY MUSIC</span>
       <div class="audio-toggles">
         <button type="button" id="levelToggleBtn" class="chip-toggle" aria-pressed="false" title="Match loudness across tracks">Level: Off</button>
-        <button type="button" id="crossfadeToggleBtn" class="chip-toggle" aria-pressed="false" title="Crossfade between tracks">Crossfade: Off</button>
       </div>
-      <span class="version">ALPHA 1.9.9</span>
+      <span class="version">ALPHA 1.9.12</span>
       <label>VOL <input id="volume" type="range" min="0" max="1" step=".01" value=".85"></label>
     </div>
   </div>

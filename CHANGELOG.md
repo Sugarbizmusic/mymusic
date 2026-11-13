@@ -1,3 +1,23 @@
+## Alpha 1.9.12
+- Home screen no longer shows a track list. Browse folders, All songs and Recent songs each open the same song picker window, in folder, A–Z by folder, or most-recent-first order.
+- Search moved into the picker window (All songs and Recent songs).
+- The home player is larger and fills the rest of the screen: bigger cover art (up to 132px), two-line title, larger transport buttons (66px play).
+- The picker window is now a centered floating window everywhere (it used to hang from the top on the home screen).
+- Circle buttons: the close × is now an icon instead of a text character (it sat about 4pt low), the "15" in the skip buttons is centered, and every circle icon is pinned to the exact center.
+- Bumped service-worker cache to mymusic-shell-v1-9-12.
+
+## Alpha 1.9.11
+- Removed Crossfade completely (button, code and saved setting). All playback goes through the plain audio player, which keeps playing with the screen off.
+- The next song now downloads in the background during the last 25 seconds of the current one, so track changes are faster, including with the screen off.
+- Bumped service-worker cache to mymusic-shell-v1-9-11.
+
+## Alpha 1.9.10
+- Fixed: music stopped when the iPhone screen turned off. Since 1.9.6, every song was routed through Web Audio (for Level/Crossfade), which iOS pauses on lock. Playback now uses the plain audio player again.
+- Level now pre-processes each song in the background (measure loudness, adjust, limit) and plays the result through the normal player, so it works with the screen off. Turning Level on or off applies from the next song.
+- Crossfade still needs Web Audio, so on iPhone it only works while the screen is on. With the screen off, songs change normally without a fade. Turning Crossfade off restores normal screen-off playback right away.
+- Asks Safari for a "playback" audio session where supported.
+- Bumped service-worker cache to mymusic-shell-v1-9-10.
+
 ## Alpha 1.9.9
 - Headlines (Your library, the welcome headline, folder browser title, expanded track title) now use Space Grotesk Light (300).
 - Home player: new Last played / Up next strip. Last played is dimmed; tap it to go back, tap Up next to skip forward.

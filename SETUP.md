@@ -38,3 +38,15 @@ Upload all app files including the updated PNG logo assets (`logo-192.png`, `log
 
 ### Alpha 1.9.9
 Upload ALL files in this package (including the PNG logos and vinyl-overlay.jpg), replacing everything in the repo, then hard reload. Confirm the player shows ALPHA 1.9.9.
+
+
+### Alpha 1.9.10
+Replace all files, close and reopen the app, confirm ALPHA 1.9.10. Test: play a song, lock the phone, and confirm it keeps playing into the next song.
+
+
+### Alpha 1.9.11
+Replace all files, close and reopen the app, confirm ALPHA 1.9.11. Crossfade is gone; Level remains.
+
+
+### Alpha 1.9.12
+Replace all files, close and reopen the app, confirm ALPHA 1.9.12.
