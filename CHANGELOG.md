@@ -1,3 +1,18 @@
+## Alpha 1.9.26
+- Custom order: in Browse folders, tap Edit order, drag the ≡ handles to reorder folders and songs, then tap Done. "Reset to A–Z" clears the order for that folder.
+- The order is saved in hifi45-order.json in the library's top folder (one file per library), so everyone who opens the library gets the same order. Folders and songs that aren't in the order (e.g. newly added) go at the end, A–Z. Deleting the file puts everything back to A–Z.
+- Saving to Drive needs permission to edit Drive files. Hi-Fi45 asks for it the first time you tap Done; it only ever writes hifi45-order.json. People who can only view the folder never get asked: their reordering is saved on their own device.
+- The order is used everywhere: Browse, playing a folder, Up next, All songs (folders in your order, each folder's songs in your order).
+- A–Z ordering is now natural ("Track 2" before "Track 10").
+- Song lists saved by older versions are rescanned once in the background (needed for All songs to follow folder order).
+- Song titles in Browse are left-aligned.
+- Bumped service-worker cache to mymusic-shell-v1-9-26.
+
+## Alpha 1.9.25
+- Home-screen app: the page now asks iOS for a solid black status bar (apple-mobile-web-app-status-bar-style "black", theme colour black), the same setup that keeps the fade out of AirWar Pacific. Remove the Hi-Fi45 icon from the Home Screen and add it again once, because iOS only reads this when the app is added.
+- Phones: the logo row also sits 18pt lower for breathing room under the status bar. The gaps around "Your library" were tightened by the same amount, so the home screen still fits without scrolling.
+- Bumped service-worker cache to mymusic-shell-v1-9-25.
+
 ## Alpha 1.9.24
 - Libraries: a new Libraries button (next to the round Rescan button) lists every Drive folder you've added. Tap one to switch; each library keeps its own saved song list, so switching back is instant.
 - Add a library by pasting a Google Drive folder link (or folder ID). The app checks you can open it and uses the folder's real name.

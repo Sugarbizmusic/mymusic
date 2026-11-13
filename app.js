@@ -1,4 +1,4 @@
-// Hi-Fi45 Alpha 1.9.24 — Libraries: save several Drive folders, switch between them, share links (?lib=<folder id>).
+// Hi-Fi45 Alpha 1.9.26 — custom order for songs and folders (hifi45-order.json in the library's top folder; view-only users save on their device).
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 let pipWin=null,pipPlayer=null,pipModalHome=null,pipDesignH=768;
@@ -90,7 +90,7 @@ function switchLibrary(id){
   if(!libraries.some(l=>l.id===id))return;
   currentLibId=id;saveLibraries();
   tracks=[];folderStack=[{id:ROOT(),name:curLib().name}];currentFolderId=ROOT();currentFolderPath=[];allSongsMode=false;recentMode=false;
-  const had=loadLibrary(false);
+  const had=loadLibrary(false);loadOrderCache();if(had)tracks=allSongsSort(tracks);if(tokenValid()){if(had&&needsRescan())scanLibrary();else refreshOrder()}
   updateLibraryUI();renderTracks();
   if(!had){if(tokenValid())scanLibrary();else setStatus(`${curLib().name} · tap Reconnect Drive to load it`)}
   else setStatus(`${curLib().name} · ${tracks.length} songs`);
@@ -129,10 +129,145 @@ function removeLibrary(id){
   if(currentLibId===id)switchLibrary(libraries[0].id);else{saveLibraries();renderLibraries()}
   libMsg(`Removed “${l.name}” from your list. Nothing in Drive was changed.`);
 }
+// ---- Custom order: hifi45-order.json in the library's top folder ----
+const ORDER_FILE="hifi45-order.json",READ_SCOPE="https://www.googleapis.com/auth/drive.readonly",WRITE_SCOPE="https://www.googleapis.com/auth/drive";
+let grantedScopes="",scopeWaiter=null,orderData={folders:{}},orderFileId=null,localOrder={folders:{}},orderEditing=false,orderCanWrite=null,browseItems=null;
+const dirTargetId=f=>f.mimeType==="application/vnd.google-apps.shortcut"?f.shortcutDetails.targetId:f.id;
+// Song lists saved before 1.9.26 lack folder ids, which All songs needs for custom folder order: rescan once.
+function needsRescan(){return tracks.length>0&&!tracks.some(t=>Array.isArray(t.pathIds))}
+function hasWriteScope(){return (" "+grantedScopes+" ").includes(" "+WRITE_SCOPE+" ")}
+function loadOrderCache(){
+  try{const o=JSON.parse(localStorage.getItem("hifi45_order_"+ROOT())||"null");orderData={folders:(o&&o.folders)||{}};orderFileId=(o&&o.fileId)||null}catch{orderData={folders:{}};orderFileId=null}
+  try{const l=JSON.parse(localStorage.getItem("hifi45_order_local_"+ROOT())||"null");localOrder={folders:(l&&l.folders)||{}}}catch{localOrder={folders:{}}}
+}
+function saveOrderCache(){try{localStorage.setItem("hifi45_order_"+ROOT(),JSON.stringify({folders:orderData.folders,fileId:orderFileId}))}catch{}}
+function saveLocalOrder(){try{localStorage.setItem("hifi45_order_local_"+ROOT(),JSON.stringify(localOrder))}catch{}}
+function folderOrder(folderId){return localOrder.folders[folderId]||orderData.folders[folderId]||null}
+const byNameNat=(a,b)=>String(a.name||"").localeCompare(String(b.name||""),undefined,{numeric:true,sensitivity:"base"});
+function orderSort(folderId,items,idOf=x=>x.id){
+  const list=folderId?folderOrder(folderId):null;if(!list||!list.length)return [...items].sort(byNameNat);
+  const idx=new Map(list.map((id,i)=>[id,i]));
+  return [...items].sort((a,b)=>{const ia=idx.has(idOf(a))?idx.get(idOf(a)):1e9,ib=idx.has(idOf(b))?idx.get(idOf(b)):1e9;return ia!==ib?ia-ib:byNameNat(a,b)});
+}
+function rankIn(parentId,id){const l=parentId&&folderOrder(parentId);if(!l)return 1e9;const i=l.indexOf(id);return i<0?1e9:i}
+// All songs: folders in their custom order (a folder's own songs come before its subfolders), songs in their custom order.
+function allSongsSort(list){
+  const nm=(x,y)=>String(x||"").localeCompare(String(y||""),undefined,{numeric:true,sensitivity:"base"});
+  return [...list].sort((a,b)=>{
+    const pa=a.pathIds,pb=b.pathIds;
+    if(!pa||!pb)return nm((a.path||[]).join("/"),(b.path||[]).join("/"))||nm(a.name,b.name);
+    const n=Math.max(pa.length,pb.length);
+    for(let k=0;k<n;k++){
+      const fa=pa[k],fb=pb[k];
+      if(fa===fb)continue;
+      if(fa===undefined)return -1;if(fb===undefined)return 1;
+      const parent=k===0?ROOT():pa[k-1];
+      return (rankIn(parent,fa)-rankIn(parent,fb))||nm(a.path[k],b.path[k]);
+    }
+    return (rankIn(a.parentId,a.id)-rankIn(b.parentId,b.id))||nm(a.name,b.name);
+  });
+}
+function applyOrderEverywhere(){
+  tracks=allSongsSort(tracks);
+  const cur=queue[currentIndex];
+  if(recentMode){}
+  else if(allSongsMode){queue=allSongsSort(queue)}
+  else if(queue.length&&queue.every(t=>t.parentId===queue[0].parentId)){queue=orderSort(queue[0].parentId,queue)}
+  currentIndex=cur?queue.findIndex(t=>t.id===cur.id):-1;
+  updatePeek();
+  if(!$("folderModal").hidden&&!orderEditing){if(pickerMode==="folders")renderFolderContents();else renderPickerList()}
+}
+async function refreshOrder(){
+  if(!tokenValid())return;const root=ROOT();
+  try{
+    const q=new URLSearchParams({q:`'${root}' in parents and name='${ORDER_FILE}' and trashed=false`,fields:"files(id,modifiedTime)",pageSize:"5",supportsAllDrives:"true",includeItemsFromAllDrives:"true"});
+    const r=await fetch(`https://www.googleapis.com/drive/v3/files?${q}`,{headers:{Authorization:`Bearer ${accessToken}`}});
+    if(!r.ok)return;const f=(await r.json()).files?.[0];if(root!==ROOT())return;
+    if(!f){orderFileId=null;orderData={folders:{}};saveOrderCache();applyOrderEverywhere();return}
+    const txt=await (await downloadFile(f.id)).text();if(root!==ROOT())return;
+    const j=JSON.parse(txt);orderFileId=f.id;orderData={folders:(j&&j.folders)||{}};saveOrderCache();applyOrderEverywhere();
+  }catch(e){console.warn("Order file not loaded",e)}
+}
+async function checkCanWrite(){
+  try{const r=await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(ROOT())}?fields=capabilities(canAddChildren,canEdit)&supportsAllDrives=true`,{headers:{Authorization:`Bearer ${accessToken}`}});
+    if(!r.ok)return false;const c=(await r.json()).capabilities||{};return !!(c.canAddChildren||c.canEdit)}catch{return false}
+}
+// Must be started straight from a tap so Google's permission window isn't blocked.
+function ensureWriteScope(){
+  if(hasWriteScope())return Promise.resolve();
+  return new Promise((res,rej)=>{scopeWaiter={res,rej};authPending=true;tokenClient.requestAccessToken({scope:READ_SCOPE+" "+WRITE_SCOPE,include_granted_scopes:true,prompt:""})});
+}
+async function writeOrderFile(){
+  const body=JSON.stringify({app:"Hi-Fi45",version:1,updated:new Date().toISOString(),note:"Song and folder order for Hi-Fi45. Safe to delete: everything goes back to A-Z.",folders:orderData.folders},null,1);
+  const H={Authorization:`Bearer ${accessToken}`};
+  if(orderFileId){
+    const r=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(orderFileId)}?uploadType=media&supportsAllDrives=true`,{method:"PATCH",headers:{...H,"Content-Type":"application/json"},body});
+    if(r.ok){saveOrderCache();return}
+    if(r.status!==404)throw new Error("Drive said "+r.status);
+    orderFileId=null;
+  }
+  const b="hifi45"+Math.random().toString(36).slice(2);
+  const meta={name:ORDER_FILE,parents:[ROOT()],mimeType:"application/json",description:"Hi-Fi45 song order"};
+  const multipart=`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${b}--`;
+  const r=await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id&supportsAllDrives=true",{method:"POST",headers:{...H,"Content-Type":`multipart/related; boundary=${b}`},body:multipart});
+  if(!r.ok)throw new Error("Drive said "+r.status);
+  orderFileId=(await r.json()).id;saveOrderCache();
+}
+function browseMsg(t){const m=$("browseMsg");if(m){m.textContent=t||"";m.hidden=!t}}
+function setupOrderEditing(){const list=$("folderList");if(!list)return;list.classList.toggle("editing",orderEditing);if(orderEditing)enableRowDrag(list)}
+function enableRowDrag(container){
+  container.querySelectorAll(".drag-handle").forEach(h=>{
+    if(h._drag)return;h._drag=true;
+    h.addEventListener("pointerdown",e=>{
+      if(!orderEditing)return;e.preventDefault();e.stopPropagation();
+      const row=h.closest("[data-group]"),group=row.dataset.group;
+      row.classList.add("dragging");let raf=0,lastY=e.clientY;
+      const win=container.ownerDocument.defaultView||window;
+      const scroll=()=>{const r=container.getBoundingClientRect();if(lastY<r.top+40)container.scrollTop-=10;else if(lastY>r.bottom-40)container.scrollTop+=10;raf=win.requestAnimationFrame(scroll)};raf=win.requestAnimationFrame(scroll);
+      const move=ev=>{lastY=ev.clientY;const sibs=[...container.querySelectorAll(`[data-group="${group}"]`)].filter(x=>x!==row);let before=null;for(const s of sibs){const r=s.getBoundingClientRect();if(ev.clientY<r.top+r.height/2){before=s;break}}if(before){if(row.nextElementSibling!==before)container.insertBefore(row,before)}else if(sibs.length){const last=sibs[sibs.length-1];if(last.nextElementSibling!==row)last.after(row)}};
+      // Listen on the whole document: moving the row in the DOM would end pointer capture on the handle.
+      const doc=container.ownerDocument,pid=e.pointerId;
+      const mv=ev=>{if(ev.pointerId===pid){ev.preventDefault();move(ev)}};
+      const up=ev=>{if(ev&&ev.pointerId!==undefined&&ev.pointerId!==pid)return;win.cancelAnimationFrame(raf);row.classList.remove("dragging");doc.removeEventListener("pointermove",mv);doc.removeEventListener("pointerup",up);doc.removeEventListener("pointercancel",up)};
+      doc.addEventListener("pointermove",mv,{passive:false});doc.addEventListener("pointerup",up);doc.addEventListener("pointercancel",up);
+    });
+  });
+}
+async function startOrderEdit(){
+  orderEditing=true;$("orderBtn").textContent="Done";$("orderBtn").classList.add("active");$("orderResetBtn").hidden=false;
+  browseMsg("Drag ≡ to reorder folders and songs, then tap Done.");setupOrderEditing();
+  orderCanWrite=await withToken(checkCanWrite).catch(()=>false);
+  if(orderEditing&&!orderCanWrite)browseMsg("Drag ≡ to reorder. You can view this folder but not edit it in Drive, so your order is saved on this device only.");
+}
+function stopOrderEditUI(){orderEditing=false;const b=$("orderBtn");if(b){b.textContent="Edit order";b.classList.remove("active")}if($("orderResetBtn"))$("orderResetBtn").hidden=true;$("folderList")?.classList.remove("editing")}
+function finishOrderEdit(reset=false){
+  const folderId=browseItems?.folderId||currentFolderId,list=$("folderList");
+  const ids=reset?[]:[...list.querySelectorAll('[data-group="dir"]'),...list.querySelectorAll('[data-group="track"]')].map(r=>r.dataset.id);
+  // Ask for Drive edit permission right away, inside the tap, when this person can write to the folder.
+  const perm=(orderCanWrite&&!hasWriteScope())?ensureWriteScope():Promise.resolve();
+  stopOrderEditUI();
+  (async()=>{
+    const apply=()=>{applyOrderEverywhere();renderFolderContents()};
+    const keepLocal=()=>{if(ids.length)localOrder.folders[folderId]=ids;else delete localOrder.folders[folderId];saveLocalOrder()};
+    if(orderCanWrite){
+      try{
+        await perm;browseMsg("Saving order to Drive…");
+        await refreshOrder();
+        if(ids.length)orderData.folders[folderId]=ids;else delete orderData.folders[folderId];
+        await writeOrderFile();
+        delete localOrder.folders[folderId];saveLocalOrder();
+        apply();browseMsg(reset?"Back to A–Z for everyone.":"Order saved to Drive for everyone who uses this library.");
+      }catch(e){console.warn(e);keepLocal();apply();browseMsg(`Couldn't save to Drive (${e.message}). Saved on this device for now.`)}
+      return;
+    }
+    keepLocal();apply();
+    browseMsg(reset?"Back to the shared order on this device.":"Order saved on this device. Only people who can edit this folder in Drive can change it for everyone.");
+  })();
+}
 const TOKEN_KEY="mymusic_token_v1",AUTH_KEY="mymusic_drive_authorized";
 function tokenValid(){return !!accessToken&&Date.now()<tokenExpiresAt-60000}
-function saveToken(){try{localStorage.setItem(TOKEN_KEY,JSON.stringify({t:accessToken,e:tokenExpiresAt}))}catch{}}
-function loadToken(){try{const o=JSON.parse(localStorage.getItem(TOKEN_KEY)||"null");if(o&&o.t&&Date.now()<o.e-60000){accessToken=o.t;tokenExpiresAt=o.e;return true}}catch{}return false}
+function saveToken(){try{localStorage.setItem(TOKEN_KEY,JSON.stringify({t:accessToken,e:tokenExpiresAt,s:grantedScopes}))}catch{}}
+function loadToken(){try{const o=JSON.parse(localStorage.getItem(TOKEN_KEY)||"null");if(o&&o.t&&Date.now()<o.e-60000){accessToken=o.t;tokenExpiresAt=o.e;grantedScopes=o.s||"";return true}}catch{}return false}
 function authExpired(msg){accessToken=null;tokenExpiresAt=0;try{localStorage.removeItem(TOKEN_KEY)}catch{}showConnectScreen(msg||"Drive sign-in expired · tap a track or Reconnect")}
 function saveLibrary(){try{localStorage.setItem(libCacheKey(ROOT()),JSON.stringify({savedAt:Date.now(),tracks}))}catch(e){console.warn("Library cache not saved",e)}const l=curLib();if(l){l.count=tracks.length;saveLibraries()}}
 function loadLibrary(setQueue=true){try{const o=JSON.parse(localStorage.getItem(libCacheKey(ROOT()))||"null");if(o&&Array.isArray(o.tracks)&&o.tracks.length){tracks=o.tracks;if(setQueue)queue=[...tracks];const l=curLib();if(l&&l.count!==tracks.length){l.count=tracks.length;saveLibraries()}return true}}catch{}return false}
@@ -148,12 +283,12 @@ function withToken(fn){
 function flushPending(err){const list=pendingActions;pendingActions=[];for(const a of list){if(err)a.reject(err);else Promise.resolve().then(a.fn).then(a.resolve,a.reject)}}
 function initAuth(){if(!window.google?.accounts?.oauth2){setTimeout(initAuth,250);return}
 tokenClient=google.accounts.oauth2.initTokenClient({client_id:CONFIG.CLIENT_ID,scope:"https://www.googleapis.com/auth/drive.readonly",
-callback:async r=>{authPending=false;if(r.error){authExpired("Drive connection needs attention. Please reconnect.");flushPending(new Error("Drive authorization failed"));return}
-accessToken=r.access_token;tokenExpiresAt=Date.now()+(Number(r.expires_in)||3600)*1000;saveToken();try{localStorage.setItem(AUTH_KEY,"yes")}catch{}
-showConnected();setStatus(tracks.length?`Connected · ${tracks.length} tracks`:"Connected");flushPending();if(!tracks.length)await scanLibrary()},
-error_callback:e=>{authPending=false;console.warn("Google sign-in",e);flushPending(new Error("Sign-in window was closed or blocked"));if(!tokenValid())showConnectScreen(tracks.length?"Tap a track or Reconnect to resume":undefined)}});
-const hadLib=loadLibrary();if(hadLib){formatCounts();renderTracks()}
-if(loadToken()){showConnected();setStatus(hadLib?`Connected · ${tracks.length} tracks`:"Connected");if(!hadLib)scanLibrary();return}
+callback:async r=>{authPending=false;if(r.error){if(scopeWaiter){scopeWaiter.rej(new Error("Drive edit permission wasn't granted"));scopeWaiter=null}if(tokenValid()){flushPending(new Error("Authorization cancelled"));return}authExpired("Drive connection needs attention. Please reconnect.");flushPending(new Error("Drive authorization failed"));return}
+accessToken=r.access_token;tokenExpiresAt=Date.now()+(Number(r.expires_in)||3600)*1000;if(r.scope)grantedScopes=r.scope;saveToken();if(scopeWaiter){const w=scopeWaiter;scopeWaiter=null;hasWriteScope()?w.res():w.rej(new Error("Drive edit permission wasn't granted"))}try{localStorage.setItem(AUTH_KEY,"yes")}catch{}
+showConnected();setStatus(tracks.length?`Connected · ${tracks.length} tracks`:"Connected");flushPending();if(!tracks.length||needsRescan())await scanLibrary();else refreshOrder()},
+error_callback:e=>{authPending=false;if(scopeWaiter){scopeWaiter.rej(new Error("The permission window was closed"));scopeWaiter=null}console.warn("Google sign-in",e);flushPending(new Error("Sign-in window was closed or blocked"));if(!tokenValid())showConnectScreen(tracks.length?"Tap a track or Reconnect to resume":undefined)}});
+loadOrderCache();const hadLib=loadLibrary();if(hadLib){tracks=allSongsSort(tracks);queue=[...tracks];formatCounts();renderTracks()}
+if(loadToken()){showConnected();setStatus(hadLib?`Connected · ${tracks.length} tracks`:"Connected");if(!hadLib||needsRescan())scanLibrary();else refreshOrder();return}
 let authorized=false;try{authorized=localStorage.getItem(AUTH_KEY)==="yes"}catch{}
 if(authorized&&hadLib)showConnectScreen("Tap a track or Reconnect to resume");else if(authorized)showConnectScreen("Tap Reconnect Drive to continue");else showConnectScreen()}
 function connectDrive(){if(tokenValid()){showConnected();return}let authorized=false;try{authorized=localStorage.getItem(AUTH_KEY)==="yes"}catch{}requestToken(!authorized)}
@@ -247,7 +382,7 @@ async function prefetchNextTrack(){
 
 async function driveList(parentId){let pageToken=null,all=[];do{const p=new URLSearchParams({q:`'${parentId}' in parents and trashed=false`,pageSize:"1000",orderBy:"name",fields:"nextPageToken,files(id,name,mimeType,size,modifiedTime,parents,shortcutDetails)"});if(pageToken)p.set("pageToken",pageToken);const res=await fetch(`https://www.googleapis.com/drive/v3/files?${p}`,{headers:{Authorization:`Bearer ${accessToken}`}});if(res.status===401){authExpired();throw new Error("Drive authorization expired ("+res.status+"). Please reconnect.")}if(!res.ok)throw new Error(`Drive API ${res.status}: ${await res.text()}`);const data=await res.json();all.push(...(data.files||[]));pageToken=data.nextPageToken}while(pageToken);return all}
 function trackInfo(t){const p=t.path||[];let artist=p[0]||"Unknown Artist",release=p.length>1?p[p.length-1]:"Unsorted";if(!isDefaultLib()){const ln=curLib().name;if(p.length<2){artist=ln;release=p[0]||ln}}return{artist,release,title:t.name.replace(/\.[^.]+$/,"" ).replace(/^\d+[\s._-]+/,""),subtitle:`${artist} · ${release}`}}
-async function walkFolder(id,path=[],seen=new Set()){if(seen.has(id))return[];seen.add(id);const items=await driveList(id),out=[];for(const f of items){if(f.mimeType==="application/vnd.google-apps.folder")out.push(...await walkFolder(f.id,[...path,f.name],seen));else if(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")out.push(...await walkFolder(f.shortcutDetails.targetId,[...path,f.name],seen));else if(SUPPORTED.has(extOf(f.name)))out.push({...f,path,parentId:id,extension:extOf(f.name)})}return out}
+async function walkFolder(id,path=[],seen=new Set(),pathIds=[]){if(seen.has(id))return[];seen.add(id);const items=await driveList(id),out=[];for(const f of items){if(f.mimeType==="application/vnd.google-apps.folder")out.push(...await walkFolder(f.id,[...path,f.name],seen,[...pathIds,f.id]));else if(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")out.push(...await walkFolder(f.shortcutDetails.targetId,[...path,f.name],seen,[...pathIds,f.shortcutDetails.targetId]));else if(SUPPORTED.has(extOf(f.name)))out.push({...f,path,pathIds,parentId:id,extension:extOf(f.name)})}return out}
 function formatCounts(){const n=curLib()?.name||"Library";$("counts").textContent=tracks.length?`${n} · ${tracks.length} audio files found`:`${n} · no songs loaded yet. Supported: MP3, WAV, M4A, AAC, FLAC, MP4.`}
 function renderBreadcrumbs(){const atRoot=folderStack.length<2;$("breadcrumbs").innerHTML=`<button type="button" class="crumb-back" aria-label="Back to the previous folder"${atRoot?" disabled":""}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>`+folderStack.map((f,i)=>`${i?'<span class="crumb-sep">›</span>':''}<button type="button" data-depth="${i}">${esc(f.name)}</button>`).join("");$("breadcrumbs").querySelectorAll("button[data-depth]").forEach(b=>b.onclick=()=>navigateTo(Number(b.dataset.depth)));const back=$("breadcrumbs").querySelector(".crumb-back");if(back&&!atRoot)back.onclick=()=>navigateTo(folderStack.length-2)}
 const PICKER_TITLES={folders:"Browse folders",all:"All songs",recent:"Recent songs"};
@@ -255,7 +390,7 @@ function openPicker(mode="folders"){
   pickerMode=mode;
   $("folderModal").hidden=false;$("folderModal").ownerDocument.body.classList.add("folder-modal-open");
   $("folderModalTitle").textContent=PICKER_TITLES[mode]||"Browse folders";
-  $("breadcrumbs").hidden=mode!=="folders";if($("folderShareBtn"))$("folderShareBtn").hidden=mode!=="folders";
+  $("breadcrumbs").hidden=mode!=="folders";if($("folderShareBtn"))$("folderShareBtn").hidden=mode!=="folders";if($("orderBar"))$("orderBar").hidden=mode!=="folders";if(orderEditing)stopOrderEditUI();browseMsg("");
   $("pickerSearch").hidden=mode==="folders";$("pickerSearch").value="";
   ["folderToggle","allSongsBtn","recentBtn"].forEach((id,k)=>{const b=$(id);if(b)b.setAttribute("aria-expanded",String(["folders","all","recent"][k]===mode))});
   if(mode==="folders")renderFolderContents();else renderPickerList();
@@ -263,7 +398,7 @@ function openPicker(mode="folders"){
 function openFolderModal(){openPicker("folders")}
 function pickerSongs(){
   if(pickerMode==="recent")return playHistory.map(findTrack).filter(Boolean);
-  return [...tracks].sort((a,b)=>(a.path||[]).join("/").localeCompare((b.path||[]).join("/"))||a.name.localeCompare(b.name));
+  return allSongsSort(tracks);
 }
 function renderPickerList(){
   const term=$("pickerSearch").value.trim().toLowerCase();
@@ -273,16 +408,16 @@ function renderPickerList(){
   $("folderList").querySelectorAll(".folder-track").forEach(b=>b.onclick=()=>{allSongsMode=pickerMode==="all";recentMode=pickerMode==="recent";queue=[...list];currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null;playTrackById(b.dataset.id);closeFolderModal()});
 }
 function markPickerCurrent(){const cur=queue[currentIndex]?.id;($("folderList")?$("folderList").querySelectorAll(".folder-track"):[]).forEach(b=>b.classList.toggle("current",b.dataset.id===cur))}
-function closeFolderModal(){$("folderModal").hidden=true;["folderToggle","allSongsBtn","recentBtn"].forEach(id=>{const b=$(id);if(b)b.setAttribute("aria-expanded","false")});$("folderModal").ownerDocument.body.classList.remove("folder-modal-open")}
+function closeFolderModal(){if(orderEditing)stopOrderEditUI();browseMsg("");$("folderModal").hidden=true;["folderToggle","allSongsBtn","recentBtn"].forEach(id=>{const b=$(id);if(b)b.setAttribute("aria-expanded","false")});$("folderModal").ownerDocument.body.classList.remove("folder-modal-open")}
 function togglePlayerExpand(force){const next=typeof force==="boolean"?force:!document.body.classList.contains("player-expanded");document.body.classList.toggle("player-expanded",next);requestAnimationFrame(fitTitle);if($("expandBtn")){$("expandBtn").setAttribute("aria-expanded",String(next));$("expandBtn").innerHTML=next?ICONS.collapse:ICONS.expand;$("expandBtn").title=next?"Collapse player":"Expand player";$("expandBtn").setAttribute("aria-label",next?"Collapse player":"Expand player")}}
-async function navigateTo(depth){allSongsMode=false;recentMode=false;folderStack=folderStack.slice(0,depth+1);currentFolderId=folderStack.at(-1).id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
-async function enterFolder(f){allSongsMode=false;recentMode=false;folderStack.push({id:f.id,name:f.name});currentFolderId=f.id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
+async function navigateTo(depth){if(orderEditing)stopOrderEditUI();browseMsg("");allSongsMode=false;recentMode=false;folderStack=folderStack.slice(0,depth+1);currentFolderId=folderStack.at(-1).id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
+async function enterFolder(f){if(orderEditing)stopOrderEditUI();browseMsg("");allSongsMode=false;recentMode=false;folderStack.push({id:f.id,name:f.name});currentFolderId=f.id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
 function renderFolderContents(){renderBreadcrumbs();$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';return withToken(_renderFolderContents).catch(e=>{$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)} · tap Reconnect Drive</div>`})}
-async function _renderFolderContents(){$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';try{const items=await driveList(currentFolderId);const dirs=items.filter(f=>f.mimeType==="application/vnd.google-apps.folder"||(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")).sort((a,b)=>a.name.localeCompare(b.name));const local=items.filter(f=>SUPPORTED.has(extOf(f.name))).map(f=>({...f,path:currentFolderPath,parentId:currentFolderId,extension:extOf(f.name)})).sort((a,b)=>a.name.localeCompare(b.name));const rows=dirs.map(f=>`<button type="button" class="folder-row" data-id="${esc(f.mimeType==="application/vnd.google-apps.shortcut"?f.shortcutDetails.targetId:f.id)}" data-name="${esc(f.name)}"><span class="folder-icon">📁</span><span class="folder-label">${esc(f.name)}</span><span class="folder-count">Open ›</span></button>`).join("");$("folderList").innerHTML=(rows||'')+(local.length?`<div class="folder-section-label">TRACKS IN THIS FOLDER</div>`+local.map(t=>`<button type="button" class="folder-track${queue[currentIndex]?.id===t.id?" current":""}" data-id="${esc(t.id)}"><span>♫</span><span>${esc(trackInfo(t).title)}</span><span>▶</span></button>`).join(""):'')||'<div class="folder-empty">This folder is empty.</div>';$("folderList").querySelectorAll(".folder-row").forEach(b=>b.onclick=()=>enterFolder({id:b.dataset.id,name:b.dataset.name}));$("folderList").querySelectorAll(".folder-track").forEach(b=>b.onclick=()=>{setQueueForFolder(local);playTrackById(b.dataset.id);closeFolderModal()});if($("folderSummary"))$("folderSummary").textContent=`${dirs.length} folders · ${local.length} tracks`}catch(e){console.error(e);$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)}</div>`}}
+async function _renderFolderContents(){$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';try{const items=await driveList(currentFolderId);const dirs=orderSort(currentFolderId,items.filter(f=>f.mimeType==="application/vnd.google-apps.folder"||(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")),dirTargetId);const local=items.filter(f=>SUPPORTED.has(extOf(f.name))).map(f=>({...f,path:currentFolderPath,parentId:currentFolderId,extension:extOf(f.name)}));const localSorted=orderSort(currentFolderId,local);local.length=0;local.push(...localSorted);browseItems={folderId:currentFolderId,dirs,local};const rows=dirs.map(f=>`<button type="button" class="folder-row" data-group="dir" data-id="${esc(dirTargetId(f))}" data-name="${esc(f.name)}"><span class="drag-handle" aria-hidden="true"></span><span class="folder-icon">📁</span><span class="folder-label">${esc(f.name)}</span><span class="folder-count">Open ›</span></button>`).join("");$("folderList").innerHTML=(rows||'')+(local.length?`<div class="folder-section-label">TRACKS IN THIS FOLDER</div>`+local.map(t=>`<button type="button" class="folder-track${queue[currentIndex]?.id===t.id?" current":""}" data-group="track" data-id="${esc(t.id)}"><span class="drag-handle" aria-hidden="true"></span><span class="ft-note">♫</span><span class="track-title">${esc(trackInfo(t).title)}</span><span>▶</span></button>`).join(""):'')||'<div class="folder-empty">This folder is empty.</div>';$("folderList").querySelectorAll(".folder-row").forEach(b=>b.onclick=()=>{if(orderEditing)return;enterFolder({id:b.dataset.id,name:b.dataset.name})});$("folderList").querySelectorAll(".folder-track").forEach(b=>b.onclick=()=>{if(orderEditing)return;setQueueForFolder(local);playTrackById(b.dataset.id);closeFolderModal()});if($("folderSummary"))$("folderSummary").textContent=`${dirs.length} folders · ${local.length} tracks`;setupOrderEditing()}catch(e){console.error(e);$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)}</div>`}}
 $("folderClose").onclick=closeFolderModal;$("folderModal").addEventListener("click",e=>{if(e.target.closest("[data-close-folder]"))closeFolderModal()});function onKey(e){if(e.key==="Escape"){if($("libModal")&&!$("libModal").hidden){closeLibraries();return}if(!$("folderModal").hidden)closeFolderModal();else if(!pipWin&&document.body.classList.contains("player-expanded"))togglePlayerExpand(false)}}document.addEventListener("keydown",onKey);
-function setQueueForFolder(list){queue=[...list].sort((a,b)=>a.name.localeCompare(b.name));currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null}
+function setQueueForFolder(list){queue=orderSort(list[0]?.parentId,list);currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null}
 function renderTracks(){updatePeek();markPickerCurrent()}
-async function scanLibrary(){if(!accessToken||scanBusy)return;scanBusy=true;setStatus("Scanning Drive…");$("refreshBtn").disabled=true;const lib=curLib();try{try{const meta=await driveGet(ROOT());if(meta&&meta.name&&(lib.name!==meta.name||lib.pending)){lib.name=meta.name;lib.pending=false;saveLibraries()}}catch(err){if(err.status===404||err.status===403){const e2=new Error(NO_ACCESS_MSG(lib.name));e2.noAccess=true;throw e2}throw err}tracks=await walkFolder(ROOT());tracks.sort((a,b)=>a.path.join("/").localeCompare(b.path.join("/"))||a.name.localeCompare(b.name));queue=[...tracks];currentIndex=-1;folderStack=[{id:ROOT(),name:lib.name}];currentFolderId=ROOT();currentFolderPath=[];allSongsMode=false;recentMode=false;saveLibrary();updateLibraryUI();formatCounts();renderTracks();setStatus(`Library scan complete · ${tracks.length} tracks`);if(!$("folderModal").hidden){if(pickerMode==="folders")renderFolderContents();else renderPickerList()}}catch(e){console.error(e);if(e.noAccess){tracks=[];formatCounts();setStatus(e.message)}else{setStatus("Drive connection needs attention");if(tokenValid())alert("Couldn't scan this library.\n\n"+e.message)}}finally{scanBusy=false;$("refreshBtn").disabled=false}}
+async function scanLibrary(){if(!accessToken||scanBusy)return;scanBusy=true;setStatus("Scanning Drive…");$("refreshBtn").disabled=true;const lib=curLib();try{try{const meta=await driveGet(ROOT());if(meta&&meta.name&&(lib.name!==meta.name||lib.pending)){lib.name=meta.name;lib.pending=false;saveLibraries()}}catch(err){if(err.status===404||err.status===403){const e2=new Error(NO_ACCESS_MSG(lib.name));e2.noAccess=true;throw e2}throw err}tracks=await walkFolder(ROOT());loadOrderCache();tracks=allSongsSort(tracks);queue=[...tracks];currentIndex=-1;folderStack=[{id:ROOT(),name:lib.name}];currentFolderId=ROOT();currentFolderPath=[];allSongsMode=false;recentMode=false;saveLibrary();updateLibraryUI();refreshOrder();formatCounts();renderTracks();setStatus(`Library scan complete · ${tracks.length} tracks`);if(!$("folderModal").hidden){if(pickerMode==="folders")renderFolderContents();else renderPickerList()}}catch(e){console.error(e);if(e.noAccess){tracks=[];formatCounts();setStatus(e.message)}else{setStatus("Drive connection needs attention");if(tokenValid())alert("Couldn't scan this library.\n\n"+e.message)}}finally{scanBusy=false;$("refreshBtn").disabled=false}}
 function showAllSongs(){openPicker("all")}
 $("pickerSearch").addEventListener("input",()=>{if(pickerMode!=="folders")renderPickerList()});
 
@@ -296,6 +431,10 @@ function onDocClick(event){
     else if(act==="remove")removeLibrary(id);
     else if(act==="share"){const l=libraries.find(x=>x.id===id),u=shareUrl(id);copyText(u).then(ok=>libMsg(ok?`Link to “${l.name}” copied.`:`Copy this link: ${u}`))}
     return}
+  const ob=event.target.closest("#orderBtn");
+  if(ob){event.preventDefault();if(orderEditing)finishOrderEdit(false);else startOrderEdit();return}
+  const orr=event.target.closest("#orderResetBtn");
+  if(orr){event.preventDefault();finishOrderEdit(true);return}
   const fs=event.target.closest("#folderShareBtn");
   if(fs){event.preventDefault();const f=folderStack[folderStack.length-1],u=shareUrl(f.id),lbl=fs.querySelector("span");
     copyText(u,fs.ownerDocument).then(ok=>{if(lbl){lbl.textContent=ok?"Copied":"Copy failed";setTimeout(()=>lbl.textContent="Share",1800)}if(!ok)setStatus("Share link: "+u)});return}

@@ -1,5 +1,5 @@
-const CACHE="mymusic-shell-v1-9-24";
-const FILES=["./","./index.html","./styles.css?v=1.9.24","./app.js?v=1.9.24","./manifest.webmanifest","./logo-192.png","./logo-512.png","./apple-touch-icon.png","./vinyl-overlay.jpg","./no-art.jpg","./btn-off.webp","./btn-on.webp","./btn-press-off.webp","./btn-press-on.webp","./knob.png","./vu-meter.png"];
+const CACHE="mymusic-shell-v1-9-26";
+const FILES=["./","./index.html","./styles.css?v=1.9.26","./app.js?v=1.9.26","./manifest.webmanifest","./logo-192.png","./logo-512.png","./apple-touch-icon.png","./vinyl-overlay.jpg","./no-art.jpg","./btn-off.webp","./btn-on.webp","./btn-press-off.webp","./btn-press-on.webp","./knob.png","./vu-meter.png"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting()));
 });

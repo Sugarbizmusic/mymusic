@@ -101,3 +101,11 @@ Replace all files (new: no-art.jpg; updated: logo-192.png, logo-512.png, apple-t
 2. In Google Cloud Console → Google Auth Platform (APIs & Services → OAuth consent screen) → Audience → Test users → Add users: add each bandmate's Gmail address. (Testing mode allows up to 100.)
 3. In Hi-Fi45, open Browse folders, go into the folder, tap Share, and send them the copied link.
 4. They open the link, tap Connect Drive, sign in, and accept Google's "unverified app" notice and the read-only Drive permission. About once a week Google asks them to approve again.
+
+
+### Alpha 1.9.25
+Replace all files. Then remove the Hi-Fi45 icon from your iPhone Home Screen and add it again from Safari (Share → Add to Home Screen), because iOS only reads the status bar setting when the app is added. Confirm ALPHA 1.9.25.
+
+
+### Alpha 1.9.26 — custom order
+Replace all files. The first time you reorder and tap Done, Google asks you to allow Hi-Fi45 to edit your Drive files (needed to save hifi45-order.json). Because the app is in Testing mode, Google may show its "unverified app" notice again; continue. The order file appears in the top folder of each library you reorder.
