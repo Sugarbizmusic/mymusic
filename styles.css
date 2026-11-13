@@ -1087,3 +1087,4 @@ body.in-pip .player{padding-bottom:40px}
   body.player-expanded:not(.in-pip) .player-ribbon{grid-area:ribbon;align-self:start}
   body.player-expanded:not(.in-pip) .player-top-bar{grid-area:top}
 }
+body.in-pip{align-items:safe center;justify-content:safe center}

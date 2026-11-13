@@ -1,4 +1,4 @@
-// MyMusic Alpha 1.9.20 — versioned stylesheet/script links so a new release can never load an old cached file.
+// MyMusic Alpha 1.9.21 — pop-out fixes: reliable sizing while the window opens, and the player always returns to the page when the pop-out closes.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 let pipWin=null,pipPlayer=null,pipModalHome=null,pipDesignH=768;
@@ -279,16 +279,20 @@ async function openPopout(){
   d.body.appendChild(player);
   const modal=document.getElementById("folderModal");if(modal){closeFolderModal();pipModalHome={el:modal,parent:modal.parentNode,next:modal.nextSibling};d.body.appendChild(modal)}
   d.addEventListener("keydown",onKey);
-  fitPipLayout(w);
+  fitPipLayout(w);[60,200,500,1000].forEach(t=>setTimeout(()=>fitPipLayout(w),t));
   let saveT=0;w.addEventListener("resize",()=>{fitPipLayout(w);clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem("mymusic_pip_size",JSON.stringify({w:w.innerWidth,h:w.innerHeight}))}catch{}},400)});
   d.addEventListener("click",onDocClick);
   w.addEventListener("resize",()=>w.requestAnimationFrame(fitTitle));
+  pipRestored=false;
   w.addEventListener("pagehide",()=>restorePlayer(wasExpanded),{once:true});
+  clearInterval(pipWatch);pipWatch=setInterval(()=>{if(!pipWin||pipWin.closed)restorePlayer(wasExpanded)},700);
   restartVu();
   w.requestAnimationFrame(fitTitle);
 }
 // Scale the fixed 390×768 phone layout to fit the pop-out window; extra space becomes background.
-function fitPipLayout(w){
+function fitPipLayout(w,tries=0){
+  if(!w||w.closed)return;
+  if(!(w.innerWidth>50&&w.innerHeight>50)){if(tries<40)setTimeout(()=>fitPipLayout(w,tries+1),50);return}
   const root=w.document.documentElement,p=w.document.getElementById("player");
   root.style.zoom="1";
   let H=768;if(p){p.style.height="auto";H=Math.max(600,Math.ceil(p.scrollHeight)+1);p.style.height=H+"px";pipDesignH=H}
@@ -296,14 +300,18 @@ function fitPipLayout(w){
   root.style.zoom=String(z);
   w.requestAnimationFrame(fitTitle);
 }
+let pipRestored=true,pipWatch=0;
 function restorePlayer(reExpand){
-  if(pipModalHome){const m=pipModalHome.el;m.hidden=true;pipModalHome.parent.insertBefore(m,pipModalHome.next);pipModalHome=null;document.body.classList.remove("folder-modal-open")}
+  if(pipRestored)return;pipRestored=true;clearInterval(pipWatch);
   const player=pipPlayer,ph=document.getElementById("pipPlaceholder");
   pipWin=null;pipPlayer=null;
-  if(player&&ph&&!document.getElementById("player")){ph.after(player)}
+  try{if(player&&!document.getElementById("player")){if(ph&&ph.parentNode)ph.after(player);else document.body.appendChild(player)}}catch(e){console.error("Restore player",e);try{document.body.appendChild(player)}catch{}}
+  try{if(player)player.style.height=""}catch{}
   if(ph)ph.hidden=true;
-  restartVu();
-  if(reExpand)togglePlayerExpand(true);
+  try{if(pipModalHome){const m=pipModalHome.el;m.hidden=true;const par=pipModalHome.parent||document.body,nx=pipModalHome.next;if(nx&&nx.parentNode===par)par.insertBefore(m,nx);else par.appendChild(m)}}catch(e){console.error("Restore picker",e);try{document.body.appendChild(pipModalHome.el)}catch{}}
+  pipModalHome=null;document.body.classList.remove("folder-modal-open");
+  try{restartVu()}catch{}
+  if(reExpand&&document.getElementById("player"))togglePlayerExpand(true);
   requestAnimationFrame(fitTitle);
 }
 function closePopout(){const w=pipWin;if(!w)return;restorePlayer(false);try{w.close()}catch{}}

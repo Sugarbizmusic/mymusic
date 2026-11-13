@@ -1,3 +1,9 @@
+## Alpha 1.9.21
+- Fixed: closing the pop-out could leave the main page empty. Bringing the player back now runs exactly once, moves the player first, and guards every step, so one failure can't stop the rest. A backup check also restores the player if Chrome doesn't report the window closing.
+- Fixed: the pop-out could open shrunk to 40% and stuck at the top. Chrome can report a zero window size for a moment while the pop-out opens; the layout now waits for a real size and refits several times during the first second.
+- The pop-out layout never cuts off its top edge, even if it can't fit the window.
+- Bumped service-worker cache to mymusic-shell-v1-9-21.
+
 ## Alpha 1.9.20
 - index.html now loads styles.css and app.js with the version in the address (styles.css?v=1.9.20). GitHub Pages' servers can keep serving the previous copy of a file for several minutes after an upload, which could show a new version number with an old layout (seen with 1.9.19's desktop layout). Each release now has its own file addresses, so that can't happen.
 - No visual changes from 1.9.19.
