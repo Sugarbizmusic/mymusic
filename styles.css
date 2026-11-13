@@ -1088,3 +1088,33 @@ body.in-pip .player{padding-bottom:40px}
   body.player-expanded:not(.in-pip) .player-top-bar{grid-area:top}
 }
 body.in-pip{align-items:safe center;justify-content:safe center}
+@media (max-width:600px){.tag-break{display:block;height:0;overflow:hidden}}
+
+/* 1.9.23 · no-art artwork fills the art area everywhere */
+.art-placeholder,body.player-expanded .art-placeholder{padding:0;background:#2c0b2b}
+.placeholder-emblem,body.player-expanded .placeholder-emblem{width:100%;height:100%;object-fit:cover;border-radius:0;box-shadow:none;transform:none}
+
+/* ================= Alpha 1.9.24 · Libraries ================= */
+.heading-actions{display:flex;align-items:center;gap:8px;flex:none}
+.heading-actions .refresh-btn{width:44px;height:44px;position:relative}
+.heading-actions .refresh-btn svg{width:18px;height:18px}
+.heading-actions .refresh-btn:disabled{opacity:.45}
+.share-btn{display:inline-flex;align-items:center;gap:6px;margin-left:auto;margin-right:10px;min-height:36px;padding:6px 12px}
+.share-btn svg{width:15px;height:15px;flex:none}
+.share-btn[hidden]{display:none}
+.lib-dialog{height:auto;max-height:min(720px,88dvh)}
+.lib-list{display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:0;margin:4px 0 14px}
+.lib-row{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 6px;border-radius:14px;border:1px solid rgba(243,224,181,.14);background:#1d0d1f}
+.lib-row.current{border-color:var(--gold);background:linear-gradient(90deg, rgba(141,55,120,.34) 0%, #261328 100%)}
+.lib-pick{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 10px;border:0;background:transparent;box-shadow:none;color:var(--cream);text-align:left}
+.lib-pick:hover{transform:none;filter:none;background:transparent}
+.lib-name{font-weight:800;font-size:15px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-meta{font-size:11.5px;color:var(--muted)}
+.lib-act{width:36px;height:36px;flex:none}
+.lib-act svg{width:15px;height:15px}
+.lib-add{display:flex;gap:8px;align-items:center}
+.lib-add .search{flex:1;margin:0;min-width:0}
+.lib-add-btn{flex:none;min-height:44px;padding:8px 18px}
+.lib-msg{min-height:18px;margin:10px 2px 0;font-size:12.5px;color:var(--gold);word-break:break-all}
+.lib-hint{margin:10px 2px 0;font-size:12px;line-height:1.45;color:var(--muted)}
+@media (max-width:420px){.heading-actions .outline{padding:8px 14px}}

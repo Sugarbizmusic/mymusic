@@ -86,3 +86,18 @@ Replace all files. From now on, every release bumps the ?v= number on styles.css
 
 ### Alpha 1.9.21
 Replace all files. Confirm ALPHA 1.9.21.
+
+
+### Alpha 1.9.22
+Replace all files. Confirm the header says Drive45 and ALPHA 1.9.22. If you've added the app to your iPhone home screen, remove and re-add it to pick up the new name.
+
+
+### Alpha 1.9.23
+Replace all files (new: no-art.jpg; updated: logo-192.png, logo-512.png, apple-touch-icon.png). Confirm Hi-Fi45 and ALPHA 1.9.23. Re-add the app to your iPhone home screen to get the new icon and name.
+
+
+### Alpha 1.9.24 — sharing a library with bandmates
+1. In Google Drive, share the folder (e.g. Sugar Business) with each bandmate's Google account as Viewer (or Editor).
+2. In Google Cloud Console → Google Auth Platform (APIs & Services → OAuth consent screen) → Audience → Test users → Add users: add each bandmate's Gmail address. (Testing mode allows up to 100.)
+3. In Hi-Fi45, open Browse folders, go into the folder, tap Share, and send them the copied link.
+4. They open the link, tap Connect Drive, sign in, and accept Google's "unverified app" notice and the read-only Drive permission. About once a week Google asks them to approve again.

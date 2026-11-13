@@ -1,3 +1,27 @@
+## Alpha 1.9.24
+- Libraries: a new Libraries button (next to the round Rescan button) lists every Drive folder you've added. Tap one to switch; each library keeps its own saved song list, so switching back is instant.
+- Add a library by pasting a Google Drive folder link (or folder ID). The app checks you can open it and uses the folder's real name.
+- Share: Browse folders has a Share button that copies a link to the folder you're in (…/mymusic/?lib=<folder id>). Opening that link adds the folder to the person's Libraries and opens it; the ?lib= part is then removed from the address bar.
+- No access: if a library hasn't been shared with the signed-in Google account, the app says so in plain words instead of showing an error.
+- Remove a library from the list with ×. This only removes it from Hi-Fi45; nothing in Drive changes.
+- Songs in a library that starts below your top-level folder show the library name as the artist (e.g. "Sugar Business · James").
+- Your existing MyMusic library, history and settings carry over unchanged.
+- Bumped service-worker cache to mymusic-shell-v1-9-24.
+
+## Alpha 1.9.23
+- Renamed the app to Hi-Fi45 (tagline unchanged: "Your music. Your groove.").
+- New app icon (the "45" record) for the header, browser tab, home-screen icon and installed app.
+- New artwork for songs without cover art (no-art.jpg), shown full-bleed everywhere.
+- Fixed: cover art flashed the default picture for a moment when the song changed. The current art now stays until the next one is ready, and isn't reloaded at all when the next song uses the same image.
+- Bumped service-worker cache to mymusic-shell-v1-9-23.
+
+## Alpha 1.9.22
+- Renamed the app to Drive45, tagline "Your music. Your groove." (page title, header, welcome text, home-screen app name, pop-out window title). Visuals unchanged.
+- The breadcrumb root still says "MyMusic" because that's the name of the Drive folder itself.
+- Saved settings (sign-in, library cache, history, Level, volume, pop-out size) keep their existing storage keys, so nothing resets.
+- Console helper is now Drive45App (MyMusicApp still works).
+- Bumped service-worker cache to mymusic-shell-v1-9-22.
+
 ## Alpha 1.9.21
 - Fixed: closing the pop-out could leave the main page empty. Bringing the player back now runs exactly once, moves the player first, and guards every step, so one failure can't stop the rest. A backup check also restores the player if Chrome doesn't report the window closing.
 - Fixed: the pop-out could open shrunk to 40% and stuck at the top. Chrome can report a zero window size for a moment while the pop-out opens; the layout now waits for a real size and refits several times during the first second.

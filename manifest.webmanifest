@@ -1,6 +1,6 @@
 {
-  "name": "MyMusic",
-  "short_name": "MyMusic",
+  "name": "Hi-Fi45",
+  "short_name": "Hi-Fi45",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#140915",
@@ -14,8 +14,7 @@
     {
       "src": "./logo-512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }
