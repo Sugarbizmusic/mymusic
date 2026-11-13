@@ -869,3 +869,112 @@ body.player-expanded .folder-dialog{
   border-top:1.5px solid var(--cream);
   border-radius:22px;
 }
+
+/* ================= Alpha 1.9.13 · Vintage deck ================= */
+/* Hardware push buttons. The element box = the black frame; the PNG (incl. glow) is drawn 14.76% beyond it. */
+.player .controls{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;align-items:center;justify-items:stretch;margin:10px 0 6px;max-width:420px;margin-left:auto;margin-right:auto}
+.player .controls .hw-btn{width:100%;height:auto;aspect-ratio:1/1;max-width:64px;justify-self:center}
+.hw-btn{position:relative;display:block;padding:0;border:0;border-radius:6px;background:transparent;box-shadow:none;color:rgba(98,52,28,.62);-webkit-tap-highlight-color:transparent;touch-action:manipulation;cursor:pointer}
+.hw-btn::before{content:"";position:absolute;inset:-14.76%;background:url(./btn-off.webp) center/100% 100% no-repeat;pointer-events:none}
+.hw-btn.lit::before{background-image:url(./btn-on.webp)}
+.hw-btn.pressed::before{background-image:url(./btn-press-off.webp)}
+.hw-btn.lit.pressed::before,.hw-btn.lit.latched::before{background-image:url(./btn-press-on.webp)}
+.player .controls .hw-btn:hover,.hw-btn:hover,.hw-btn:active{transform:none;filter:none;box-shadow:none;background:transparent}
+.hw-btn:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+.player .controls .hw-btn svg{position:absolute;left:49.5%;top:51%;width:34%;height:34%;transform:translate(-50%,-50%);display:block;z-index:1;pointer-events:none}
+.player .controls .hw-skip svg{width:42%;height:42%}
+.hw-btn.lit{color:rgba(132,62,16,.72)}
+.hw-btn.pressed svg,.hw-btn.latched svg{margin-top:1px}
+.hw-preload{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;background:url(./btn-on.webp),url(./btn-press-off.webp),url(./btn-press-on.webp)}
+.hw-mini{width:24px;height:24px;flex:none}
+
+/* Deck row: knob · Level · VU */
+.deck{display:flex;align-items:center;gap:14px;margin:10px 0 4px;position:relative;z-index:3}
+.deck-unit{display:flex;flex-direction:column;align-items:center;gap:6px;flex:none}
+.deck-label{font-size:8.5px;font-weight:800;letter-spacing:2px;color:var(--cream-soft)}
+.vol-knob{position:relative;width:64px;height:64px;touch-action:none;cursor:grab;outline:none;-webkit-user-select:none;user-select:none}
+.vol-knob:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:50%}
+.vol-knob img{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
+.knob-cap{transform-origin:48.54% 49.02%;will-change:transform}
+.level-unit{margin-left:auto}
+.vu{position:relative;flex:0 1 178px;aspect-ratio:290/157;margin-left:4px}
+.vu-face{position:absolute;inset:0;width:100%;height:100%;display:block}
+.vu-needle{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.player-footer{display:flex;justify-content:flex-end;align-items:center;padding-top:4px}
+.player-footer #queueLabel{display:none}
+
+/* Home (docked) player sizing with the deck */
+.art-frame{width:clamp(76px,27vw,112px);height:clamp(76px,27vw,112px)}
+.player .now{margin:4px 0 0}
+
+/* Expanded player */
+body.player-expanded .art-stage{height:min(100vw, calc(100dvh - 470px - env(safe-area-inset-top) - env(safe-area-inset-bottom)))}
+body.player-expanded .player .controls{max-width:440px;gap:9px}
+body.player-expanded .player .controls .hw-btn{max-width:66px}
+body.player-expanded .deck{max-width:440px;width:100%;margin:12px auto 2px}
+body.player-expanded .player-footer{max-width:440px;width:100%;margin:0 auto}
+/* No cover art: the emblem fills the whole art area */
+body.player-expanded .art-placeholder{padding:0;background:#33072f}
+body.player-expanded .placeholder-emblem{width:100%;height:100%;object-fit:cover;border-radius:0;box-shadow:none;transform:scale(1.16)}
+
+/* Browse: back arrow at the left of the breadcrumbs */
+.folder-dialog .breadcrumbs .crumb-back{width:34px;height:34px;min-height:34px;flex:none;padding:0;border-radius:50%;display:grid;place-items:center;position:relative}
+.folder-dialog .breadcrumbs .crumb-back svg{position:absolute;left:50%;top:50%;width:15px;height:15px;transform:translate(-55%,-50%)}
+.folder-dialog .breadcrumbs .crumb-back:disabled{opacity:.35;cursor:default}
+/* 1.9.13 fit & alignment pass */
+.deck{align-items:flex-end;margin:6px 0 0}
+.level-unit{padding-bottom:2px}
+.vu{align-self:center}
+.player .queue-peek{margin-top:8px}
+.player .peek{min-height:42px;padding:5px 10px}
+.player .controls{margin:6px auto 2px}
+.player-footer{padding-top:0}
+.vol-knob{width:58px;height:58px}
+.art-frame{width:clamp(72px,26vw,104px);height:clamp(72px,26vw,104px)}
+body.player-expanded .vol-knob{width:64px;height:64px}
+body.player-expanded .art-stage{height:min(100vw, calc(100dvh - 432px - env(safe-area-inset-top) - env(safe-area-inset-bottom)))}
+.player{margin-top:8px}
+@media(min-width:700px){.player{margin-top:26px}}
+/* 1.9.13 polish: printed cap icons, bigger knob, centered Level + version */
+.player .controls .hw-btn svg{top:53.5%;left:49.4%;width:32%;height:32%;color:rgba(78,26,66,.5);filter:drop-shadow(0 0 .7px rgba(78,26,66,.45)) blur(.3px);mix-blend-mode:multiply}
+.player .controls .hw-skip svg{width:40%;height:40%}
+.player .controls .hw-btn.lit svg{color:rgba(104,34,58,.52)}
+.player .controls .hw-btn.pressed svg,.player .controls .hw-btn.latched svg{top:52.5%;margin-top:0}
+.deck{align-items:center;gap:12px}
+.vol-knob{width:72px;height:72px}
+body.player-expanded .vol-knob{width:80px;height:80px}
+.level-unit{position:relative;margin-left:auto;padding:0;align-self:center}
+.level-unit .deck-label{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%)}
+.vu-unit{display:flex;flex-direction:column;align-items:center;gap:6px;flex:0 1 178px;margin-left:4px}
+.vu-unit .vu{flex:none;width:100%;margin:0}
+.vu-unit .version{text-align:center}
+.player-footer{display:none}
+.vu-unit{position:relative;display:block}
+.vu-unit .version{position:absolute;left:0;right:0;top:calc(100% + 6px);text-align:center}
+.deck{margin-bottom:18px}
+.vol-knob{width:68px;height:68px}
+body.player-expanded .vol-knob{width:80px;height:80px}
+.knob-unit{position:relative}
+.knob-unit .deck-label{position:absolute;top:calc(100% + 5px);left:50%;transform:translateX(-50%)}
+.deck{margin-bottom:16px}
+.art-frame{width:clamp(72px,25vw,98px);height:clamp(72px,25vw,98px)}
+.deck{margin-bottom:14px}
+/* Knob = VU height; VOL shares the version's baseline */
+.vu-unit{flex:0 0 178px}
+.vol-knob,body.player-expanded .vol-knob{width:96px;height:96px}
+.knob-unit .deck-label,.vu-unit .version{top:calc(100% + 6px);font-size:8.5px;line-height:10px;letter-spacing:1.6px}
+.knob-unit .deck-label{letter-spacing:2px}
+.deck{gap:10px}
+/* Knob sized by its visible ring (80.5% of the PNG) to match the VU's visible height; bottoms aligned */
+.vol-knob,body.player-expanded .vol-knob{width:108px;height:108px}
+.knob-unit{top:2.4px}
+.knob-unit .deck-label{top:calc(100% - 2.3px)}
+/* Expanded cover art: keep the top, crop only under the bottom fade */
+body.player-expanded .artwork{object-position:center top}
+.knob-unit{margin:-6px 0}
+/* Lighter fade under the expanded art */
+body.player-expanded .art-gradient{height:20%;background:linear-gradient(180deg, rgba(17,7,18,0) 0%, rgba(17,7,18,.28) 55%, rgba(17,7,18,.62) 100%)}
+/* Level centered between knob and VU */
+.deck{justify-content:space-between}
+.level-unit{margin:0 auto}
+.level-unit{left:-1.1px}

@@ -1,3 +1,20 @@
+## Alpha 1.9.13
+- Vintage deck styling: the five transport buttons are hardware push buttons, all the same size across the full width.
+  - Prev / Back 15 / Forward 15 / Next: press in and light while held, stay lit for a moment after release, then go dark.
+  - Play/Pause: lit while a song is playing (showing the pause icon), dark when paused; presses in when tapped.
+- Level is now a small latching push button: pressed in and lit when on, out and dark when off.
+- Rotary volume knob (drag around it, drag up/down near the center, scroll wheel, or arrow keys). Only the cap turns; the ring stays fixed. Volume is remembered. On iPhone the knob turns but iOS only allows the side buttons to change volume.
+- VU meter with an animated needle. When Level is on it follows the song's real loudness; otherwise it's a simulated movement while playing, and rests left when paused.
+- Expanded player: cover art is anchored to the top, so any crop (the art area is a little shorter than wide) happens only at the bottom, under the fade.
+- Expanded player: lighter fade under the art so its bottom edge stays visible.
+- Level button centered between the knob and the VU meter.
+- Expanded player without cover art: the MyMusic emblem now fills the whole art area on the purple background.
+- Browse folders: back arrow at the left of the breadcrumbs.
+- Button icons are printed on the caps in a faded dark purple with a soft edge, centered on the cap face.
+- Deck row: larger volume knob sized so its visible ring matches the VU meter's visible height (top and bottom aligned); VOL sits the same distance below the knob as the version number below the meter, on the same baseline; knob, Level button and VU meter share one center line; version number centered under the VU meter.
+- New files: btn-off.webp, btn-on.webp, btn-press-off.webp, btn-press-on.webp, knob-back.png, knob-cap.png, vu-meter.png (also cached for offline use).
+- Bumped service-worker cache to mymusic-shell-v1-9-13.
+
 ## Alpha 1.9.12
 - Home screen no longer shows a track list. Browse folders, All songs and Recent songs each open the same song picker window, in folder, A–Z by folder, or most-recent-first order.
 - Search moved into the picker window (All songs and Recent songs).

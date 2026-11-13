@@ -1,4 +1,4 @@
-// MyMusic Alpha 1.9.12 — home track list removed; Browse / All songs / Recent open one song-picker window; larger home player; centered circle icons.
+// MyMusic Alpha 1.9.13 — vintage deck: hardware push buttons, rotary volume knob, VU meter, latching Level button; full-bleed logo art; breadcrumb back button.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 const $=id=>document.getElementById(id);
@@ -17,7 +17,7 @@ const ICONS={
   expand:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>',
   collapse:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg>'
 };
-function setPlayIcon(state){const b=$("playBtn");if(!b)return;b.innerHTML=ICONS[state]||ICONS.play;b.dataset.state=state;b.setAttribute("aria-label",state==="pause"?"Pause":state==="loading"?"Loading":"Play")}
+function setPlayIcon(state){const b=$("playBtn");if(!b)return;b.innerHTML=ICONS[state]||ICONS.play;b.dataset.state=state;b.classList.toggle("lit",state!=="play");b.setAttribute("aria-label",state==="pause"?"Pause":state==="loading"?"Loading":"Play")}
 // ---- Listening history (Recent songs + Last played) ----
 const HISTORY_KEY="mymusic_history_v1",HISTORY_MAX=30;
 let playHistory=[];
@@ -80,7 +80,7 @@ $("connectBtn").onclick=connectDrive;$("welcomeConnectBtn").onclick=connectDrive
 if($("resumePrompt"))$("resumePrompt").onclick=()=>{const id=pendingResumeTrackId||(queue[currentIndex]?.id)||(queue[0]?.id);if(id)playTrackById(id);else connectDrive()};
 
 // ---- Loudness leveling (rendered offline, played through the plain <audio> element) ----
-const leveledCache=new Map();
+const leveledCache=new Map(),envCache=new Map();
 function encodeWav(buf){
   const ch=buf.numberOfChannels,len=buf.length,rate=buf.sampleRate,bytes=len*ch*2,ab=new ArrayBuffer(44+bytes),v=new DataView(ab);
   const w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
@@ -105,6 +105,9 @@ async function levelBlob(id,blob){
     const rms=count?Math.sqrt(sumSq/count):TARGET_RMS;
     const gain=rms>0.001?Math.min(3.0,Math.max(0.35,TARGET_RMS/rms)):1;
     gainCache.set(id,gain);
+    try{const hop=0.05,win=Math.floor(decoded.sampleRate*hop),n=Math.ceil(chd.length/win),env=new Float32Array(n);
+      for(let k=0;k<n;k++){let ss=0,c=0;for(let q=k*win,e=Math.min(chd.length,q+win);q<e;q+=4){ss+=chd[q]*chd[q];c++}env[k]=Math.sqrt(ss/Math.max(1,c))*Math.min(gain,2)}
+      envCache.set(id,{hop,data:env});while(envCache.size>3)envCache.delete(envCache.keys().next().value)}catch{}
     let out=blob;
     if(Math.abs(gain-1)>=0.08){
       const off=new OCtx(decoded.numberOfChannels,decoded.length,decoded.sampleRate);
@@ -126,7 +129,7 @@ function initAudioToggles(){
   updateToggleButtons();
 }
 function updateToggleButtons(){
-  if($("levelToggleBtn")){$("levelToggleBtn").setAttribute("aria-pressed",String(levelEnabled));$("levelToggleBtn").classList.toggle("active",levelEnabled);$("levelToggleBtn").textContent=levelEnabled?"Level: On":"Level: Off"}
+  const lb=$("levelToggleBtn");if(lb){lb.setAttribute("aria-pressed",String(levelEnabled));lb.classList.toggle("lit",levelEnabled);lb.classList.toggle("latched",levelEnabled);lb.title=levelEnabled?"Level: on (matches loudness)":"Level: off"}
 }
 function toggleLeveling(){
   levelEnabled=!levelEnabled;
@@ -150,7 +153,7 @@ async function driveList(parentId){let pageToken=null,all=[];do{const p=new URLS
 function trackInfo(t){const p=t.path||[],artist=p[0]||"Unknown Artist",release=p.length>1?p[p.length-1]:"Unsorted";return{artist,release,title:t.name.replace(/\.[^.]+$/,"" ).replace(/^\d+[\s._-]+/,""),subtitle:`${artist} · ${release}`}}
 async function walkFolder(id,path=[],seen=new Set()){if(seen.has(id))return[];seen.add(id);const items=await driveList(id),out=[];for(const f of items){if(f.mimeType==="application/vnd.google-apps.folder")out.push(...await walkFolder(f.id,[...path,f.name],seen));else if(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")out.push(...await walkFolder(f.shortcutDetails.targetId,[...path,f.name],seen));else if(SUPPORTED.has(extOf(f.name)))out.push({...f,path,parentId:id,extension:extOf(f.name)})}return out}
 function formatCounts(){$("counts").textContent=tracks.length?`${tracks.length} audio files found`:"No supported audio files found. Add MP3, WAV, M4A, AAC, FLAC or MP4 files inside MyMusic, then Refresh."}
-function renderBreadcrumbs(){$("breadcrumbs").innerHTML=folderStack.map((f,i)=>`${i?'<span class="crumb-sep">›</span>':''}<button type="button" data-depth="${i}">${esc(f.name)}</button>`).join("");$("breadcrumbs").querySelectorAll("button").forEach(b=>b.onclick=()=>navigateTo(Number(b.dataset.depth)))}
+function renderBreadcrumbs(){const atRoot=folderStack.length<2;$("breadcrumbs").innerHTML=`<button type="button" class="crumb-back" aria-label="Back to the previous folder"${atRoot?" disabled":""}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>`+folderStack.map((f,i)=>`${i?'<span class="crumb-sep">›</span>':''}<button type="button" data-depth="${i}">${esc(f.name)}</button>`).join("");$("breadcrumbs").querySelectorAll("button[data-depth]").forEach(b=>b.onclick=()=>navigateTo(Number(b.dataset.depth)));const back=$("breadcrumbs").querySelector(".crumb-back");if(back&&!atRoot)back.onclick=()=>navigateTo(folderStack.length-2)}
 const PICKER_TITLES={folders:"Browse folders",all:"All songs",recent:"Recent songs"};
 function openPicker(mode="folders"){
   pickerMode=mode;
@@ -276,5 +279,59 @@ function bindAudioEvents(el){
 }
 bindAudioEvents(audio);
 $("seek").oninput=()=>{if(audio.duration)audio.currentTime=Number($("seek").value)/1000*audio.duration};$("volume").oninput=()=>{audio.volume=Number($("volume").value);};audio.volume=.85;
+// ---- Vintage deck: push buttons, volume knob, VU meter ----
+document.querySelectorAll(".hw-btn").forEach(b=>{
+  const mode=b.dataset.hw;
+  const flash=()=>{clearTimeout(b._t);b.classList.add("lit");b._t=setTimeout(()=>b.classList.remove("lit"),380)};
+  b.addEventListener("pointerdown",e=>{if(e.button>0)return;b.classList.add("pressed");if(mode==="momentary"){clearTimeout(b._t);b.classList.add("lit")}});
+  const release=()=>{if(!b.classList.contains("pressed"))return;b.classList.remove("pressed");if(mode==="momentary"){clearTimeout(b._t);b._t=setTimeout(()=>b.classList.remove("lit"),380)}};
+  ["pointerup","pointercancel","pointerleave"].forEach(ev=>b.addEventListener(ev,release));
+  b.addEventListener("click",e=>{if(e.detail===0&&mode==="momentary")flash()});
+});
+const KNOB_REST=144,KNOB_MIN=-135,KNOB_MAX=135,VOL_KEY="mymusic_volume_v1";
+const volumeWritable=(()=>{try{const t=document.createElement("audio");t.volume=.5;return Math.abs(t.volume-.5)<.01}catch{return true}})();
+let knobVal=.85;try{const v=parseFloat(localStorage.getItem(VOL_KEY));if(v>=0&&v<=1)knobVal=v}catch{}
+function setVolume(v,save=true){
+  knobVal=Math.max(0,Math.min(1,v));$("volume").value=knobVal;try{audio.volume=knobVal}catch{}
+  const cap=$("knobCap");if(cap)cap.style.transform=`rotate(${KNOB_MIN+(KNOB_MAX-KNOB_MIN)*knobVal-KNOB_REST}deg)`;
+  const k=$("volKnob");if(k)k.setAttribute("aria-valuenow",String(Math.round(knobVal*100)));
+  if(save)try{localStorage.setItem(VOL_KEY,String(knobVal))}catch{}
+}
+setVolume(knobVal,false);
+(()=>{const k=$("volKnob");if(!k)return;let last=null,lastY=0,warned=false;
+  const polar=e=>{const r=k.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);return{a:Math.atan2(dx,-dy)*180/Math.PI,d:Math.hypot(dx,dy)}};
+  k.addEventListener("pointerdown",e=>{e.preventDefault();try{k.setPointerCapture(e.pointerId)}catch{}last=polar(e).a;lastY=e.clientY;
+    if(!volumeWritable&&!warned){warned=true;setStatus("iPhone sets volume with its side buttons")}});
+  k.addEventListener("pointermove",e=>{if(last===null)return;const p=polar(e);let d;
+    if(p.d>14){d=p.a-last;if(d>180)d-=360;if(d<-180)d+=360;d/=270}else d=(lastY-e.clientY)/160;
+    last=p.a;lastY=e.clientY;setVolume(knobVal+d)});
+  const end=()=>{last=null};k.addEventListener("pointerup",end);k.addEventListener("pointercancel",end);
+  k.addEventListener("wheel",e=>{e.preventDefault();setVolume(knobVal-e.deltaY/1200)},{passive:false});
+  k.addEventListener("keydown",e=>{const m={ArrowUp:.05,ArrowRight:.05,ArrowDown:-.05,ArrowLeft:-.05}[e.key];if(m){e.preventDefault();setVolume(knobVal+m)}});
+})();
+// VU needle: follows the song's real loudness when Level has analysed it, otherwise a convincing simulation.
+const VU_TABLE=[[-40,-57],[-20,-48.3],[-10,-34.1],[-7,-24.6],[-5,-15.6],[-3,-3.6],[-2,3.1],[-1,11.2],[0,21.8],[1,31.1],[2,42],[3,51],[6,55]];
+function vuAngle(db){if(db<=VU_TABLE[0][0])return VU_TABLE[0][1];for(let i=1;i<VU_TABLE.length;i++){const[a,x]=VU_TABLE[i-1],[b,y]=VU_TABLE[i];if(db<=b)return x+(y-x)*(db-a)/(b-a)}return VU_TABLE.at(-1)[1]}
+let vuAng=-57,vuVel=0,vuPrev=0,vuWalk=-7,vuWalkTarget=-7,vuWalkAt=0,vuKick=0,vuKickAt=0;
+function vuTargetDb(now){
+  if(!audio.src||audio.paused)return -40;
+  const env=envCache.get(queue[currentIndex]?.id);
+  if(env&&env.data.length){const i=Math.min(env.data.length-1,Math.floor(audio.currentTime/env.hop));const r=env.data[i];return 20*Math.log10(Math.max(r,1e-5)/0.15)+1}
+  if(now>vuWalkAt){vuWalkTarget=-9+Math.random()*7;vuWalkAt=now+250+Math.random()*700}
+  vuWalk+=(vuWalkTarget-vuWalk)*0.06;
+  if(now>vuKickAt){vuKick=2+Math.random()*3.5;vuKickAt=now+380+Math.random()*260}
+  vuKick*=0.9;
+  return vuWalk+vuKick+Math.sin(now/97)*0.8+(Math.random()-.5)*1.2;
+}
+function vuFrame(now){
+  const dt=Math.min(0.05,(now-(vuPrev||now))/1000);vuPrev=now;
+  const target=vuAngle(vuTargetDb(now)),k=90,c=15;
+  vuVel+=((target-vuAng)*k-vuVel*c)*dt;vuAng+=vuVel*dt;
+  const a=vuAng.toFixed(2);
+  const n=$("vuNeedleLine"),sh=$("vuNeedleShadow");
+  if(n)n.setAttribute("transform",`rotate(${a} 408 445)`);if(sh)sh.setAttribute("transform",`rotate(${a} 412 445)`);
+  requestAnimationFrame(vuFrame);
+}
+requestAnimationFrame(vuFrame);
 if("serviceWorker"in navigator&&location.protocol.startsWith("http"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(reg=>reg.update()).catch(console.warn));try{if(navigator.audioSession)navigator.audioSession.type="playback"}catch{}
 setPlayIcon("play");initAudioToggles();initAuth();

@@ -50,3 +50,7 @@ Replace all files, close and reopen the app, confirm ALPHA 1.9.11. Crossfade is 
 
 ### Alpha 1.9.12
 Replace all files, close and reopen the app, confirm ALPHA 1.9.12.
+
+
+### Alpha 1.9.13
+Replace all files — there are 7 new image files (buttons, knob, VU meter), 18 files total. Close and reopen the app, confirm ALPHA 1.9.13.
