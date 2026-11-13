@@ -1,4 +1,4 @@
-// MyMusic Alpha 1.9.19 — tighter pop-out (390×768) with bottom padding; desktop/landscape expanded view puts the art left and controls right.
+// MyMusic Alpha 1.9.20 — versioned stylesheet/script links so a new release can never load an old cached file.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 let pipWin=null,pipPlayer=null,pipModalHome=null,pipDesignH=768;

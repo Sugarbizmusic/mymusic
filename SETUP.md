@@ -78,3 +78,7 @@ Replace all files. Confirm ALPHA 1.9.18.
 
 ### Alpha 1.9.19
 Replace all files. Confirm ALPHA 1.9.19. If the pop-out remembers an old size, resize it once.
+
+
+### Alpha 1.9.20
+Replace all files. From now on, every release bumps the ?v= number on styles.css and app.js in index.html.
