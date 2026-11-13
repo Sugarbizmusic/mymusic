@@ -1,7 +1,7 @@
-// MyMusic Alpha 1.9.16 — pop-out player (Document Picture-in-Picture: Chrome, Edge, Firefox on desktop).
+// MyMusic Alpha 1.9.18 — VU meter animates in the pop-out (its animation loop follows the window showing the player).
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
-let pipWin=null,pipPlayer=null;
+let pipWin=null,pipPlayer=null,pipModalHome=null;
 const $=id=>document.getElementById(id)||(pipWin&&!pipWin.closed?pipWin.document.getElementById(id):null);
 let audio=$("audio");
 let tokenClient=null,accessToken=null,tracks=[],queue=[],currentIndex=-1,currentObjectUrl=null,standbyObjectUrl=null,currentArtUrl=null,currentFolderId=CONFIG.ROOT_FOLDER_ID,currentFolderPath=[],folderStack=[{id:CONFIG.ROOT_FOLDER_ID,name:"MyMusic"}],scanBusy=false,authPending=false,allSongsMode=false,recentMode=false,pickerMode="folders",tokenExpiresAt=0,pendingActions=[],pendingResumeTrackId=null;
@@ -181,7 +181,7 @@ function renderBreadcrumbs(){const atRoot=folderStack.length<2;$("breadcrumbs").
 const PICKER_TITLES={folders:"Browse folders",all:"All songs",recent:"Recent songs"};
 function openPicker(mode="folders"){
   pickerMode=mode;
-  $("folderModal").hidden=false;document.body.classList.add("folder-modal-open");
+  $("folderModal").hidden=false;$("folderModal").ownerDocument.body.classList.add("folder-modal-open");
   $("folderModalTitle").textContent=PICKER_TITLES[mode]||"Browse folders";
   $("breadcrumbs").hidden=mode!=="folders";
   $("pickerSearch").hidden=mode==="folders";$("pickerSearch").value="";
@@ -200,14 +200,14 @@ function renderPickerList(){
   $("folderList").innerHTML=list.length?list.map(t=>{const i=trackInfo(t);return`<button type="button" class="folder-track${t.id===cur?" current":""}" data-id="${esc(t.id)}"><span>♫</span><span class="ft-text"><span class="ft-title">${esc(i.title)}</span><span class="ft-meta">${esc(i.subtitle)}</span></span><span>▶</span></button>`}).join(""):`<div class="folder-empty">${pickerMode==="recent"&&!term?"No recent songs yet. Play something and it will show up here.":"No matching songs."}</div>`;
   $("folderList").querySelectorAll(".folder-track").forEach(b=>b.onclick=()=>{allSongsMode=pickerMode==="all";recentMode=pickerMode==="recent";queue=[...list];currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null;playTrackById(b.dataset.id);closeFolderModal()});
 }
-function markPickerCurrent(){const cur=queue[currentIndex]?.id;document.querySelectorAll("#folderList .folder-track").forEach(b=>b.classList.toggle("current",b.dataset.id===cur))}
-function closeFolderModal(){$("folderModal").hidden=true;["folderToggle","allSongsBtn","recentBtn"].forEach(id=>{const b=$(id);if(b)b.setAttribute("aria-expanded","false")});document.body.classList.remove("folder-modal-open")}
+function markPickerCurrent(){const cur=queue[currentIndex]?.id;($("folderList")?$("folderList").querySelectorAll(".folder-track"):[]).forEach(b=>b.classList.toggle("current",b.dataset.id===cur))}
+function closeFolderModal(){$("folderModal").hidden=true;["folderToggle","allSongsBtn","recentBtn"].forEach(id=>{const b=$(id);if(b)b.setAttribute("aria-expanded","false")});$("folderModal").ownerDocument.body.classList.remove("folder-modal-open")}
 function togglePlayerExpand(force){const next=typeof force==="boolean"?force:!document.body.classList.contains("player-expanded");document.body.classList.toggle("player-expanded",next);requestAnimationFrame(fitTitle);if($("expandBtn")){$("expandBtn").setAttribute("aria-expanded",String(next));$("expandBtn").innerHTML=next?ICONS.collapse:ICONS.expand;$("expandBtn").title=next?"Collapse player":"Expand player";$("expandBtn").setAttribute("aria-label",next?"Collapse player":"Expand player")}}
 async function navigateTo(depth){allSongsMode=false;recentMode=false;folderStack=folderStack.slice(0,depth+1);currentFolderId=folderStack.at(-1).id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
 async function enterFolder(f){allSongsMode=false;recentMode=false;folderStack.push({id:f.id,name:f.name});currentFolderId=f.id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
 function renderFolderContents(){renderBreadcrumbs();$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';return withToken(_renderFolderContents).catch(e=>{$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)} · tap Reconnect Drive</div>`})}
 async function _renderFolderContents(){$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';try{const items=await driveList(currentFolderId);const dirs=items.filter(f=>f.mimeType==="application/vnd.google-apps.folder"||(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")).sort((a,b)=>a.name.localeCompare(b.name));const local=items.filter(f=>SUPPORTED.has(extOf(f.name))).map(f=>({...f,path:currentFolderPath,parentId:currentFolderId,extension:extOf(f.name)})).sort((a,b)=>a.name.localeCompare(b.name));const rows=dirs.map(f=>`<button type="button" class="folder-row" data-id="${esc(f.mimeType==="application/vnd.google-apps.shortcut"?f.shortcutDetails.targetId:f.id)}" data-name="${esc(f.name)}"><span class="folder-icon">📁</span><span class="folder-label">${esc(f.name)}</span><span class="folder-count">Open ›</span></button>`).join("");$("folderList").innerHTML=(rows||'')+(local.length?`<div class="folder-section-label">TRACKS IN THIS FOLDER</div>`+local.map(t=>`<button type="button" class="folder-track${queue[currentIndex]?.id===t.id?" current":""}" data-id="${esc(t.id)}"><span>♫</span><span>${esc(trackInfo(t).title)}</span><span>▶</span></button>`).join(""):'')||'<div class="folder-empty">This folder is empty.</div>';$("folderList").querySelectorAll(".folder-row").forEach(b=>b.onclick=()=>enterFolder({id:b.dataset.id,name:b.dataset.name}));$("folderList").querySelectorAll(".folder-track").forEach(b=>b.onclick=()=>{setQueueForFolder(local);playTrackById(b.dataset.id);closeFolderModal()});if($("folderSummary"))$("folderSummary").textContent=`${dirs.length} folders · ${local.length} tracks`}catch(e){console.error(e);$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)}</div>`}}
-$("folderClose").onclick=closeFolderModal;$("folderModal").addEventListener("click",e=>{if(e.target.closest("[data-close-folder]"))closeFolderModal()});document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(!$("folderModal").hidden)closeFolderModal();else if(document.body.classList.contains("player-expanded"))togglePlayerExpand(false)}});
+$("folderClose").onclick=closeFolderModal;$("folderModal").addEventListener("click",e=>{if(e.target.closest("[data-close-folder]"))closeFolderModal()});function onKey(e){if(e.key==="Escape"){if(!$("folderModal").hidden)closeFolderModal();else if(!pipWin&&document.body.classList.contains("player-expanded"))togglePlayerExpand(false)}}document.addEventListener("keydown",onKey);
 function setQueueForFolder(list){queue=[...list].sort((a,b)=>a.name.localeCompare(b.name));currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null}
 function renderTracks(){updatePeek();markPickerCurrent()}
 async function scanLibrary(){if(!accessToken||scanBusy)return;scanBusy=true;setStatus("Scanning Drive…");$("refreshBtn").disabled=true;try{tracks=await walkFolder(CONFIG.ROOT_FOLDER_ID);tracks.sort((a,b)=>a.path.join("/").localeCompare(b.path.join("/"))||a.name.localeCompare(b.name));queue=[...tracks];currentIndex=-1;folderStack=[{id:CONFIG.ROOT_FOLDER_ID,name:"MyMusic"}];currentFolderId=CONFIG.ROOT_FOLDER_ID;currentFolderPath=[];allSongsMode=false;recentMode=false;saveLibrary();formatCounts();renderTracks();setStatus(`Library scan complete · ${tracks.length} tracks`);if(!$("folderModal").hidden){if(pickerMode==="folders")renderFolderContents();else renderPickerList()}}catch(e){console.error(e);setStatus("Drive connection needs attention");if(tokenValid())alert("Couldn't scan MyMusic.\n\n"+e.message)}finally{scanBusy=false;$("refreshBtn").disabled=false}}
@@ -260,7 +260,10 @@ async function openPopout(){
   const player=$("player");if(!player)return;
   const wasExpanded=document.body.classList.contains("player-expanded");
   let w;
-  try{w=await documentPictureInPicture.requestWindow({width:400,height:840})}catch(e){console.warn("Pop-out refused",e);setStatus("Couldn't open the pop-out window");return}
+  const PIP_W=390,PIP_H=800;let size=null;
+  try{const v=JSON.parse(localStorage.getItem("mymusic_pip_size")||"null");if(v&&v.w>=200&&v.h>=400)size=v}catch{}
+  if(!size){const h=Math.max(480,Math.round((screen.availHeight||900)*0.9));size={w:Math.round(h*PIP_W/PIP_H),h}}
+  try{w=await documentPictureInPicture.requestWindow({width:size.w,height:size.h})}catch(e){console.warn("Pop-out refused",e);setStatus("Couldn't open the pop-out window");return}
   pipWin=w;pipPlayer=player;const d=w.document;
   // styles + fonts
   document.querySelectorAll('link[rel="stylesheet"],style').forEach(n=>{const c=n.cloneNode(true);if(c.tagName==="LINK")c.href=n.href;d.head.appendChild(c)});
@@ -274,18 +277,29 @@ async function openPopout(){
   if(wasExpanded)togglePlayerExpand(false);
   $("pipPlaceholder").hidden=false;
   d.body.appendChild(player);
+  const modal=document.getElementById("folderModal");if(modal){closeFolderModal();pipModalHome={el:modal,parent:modal.parentNode,next:modal.nextSibling};d.body.appendChild(modal)}
+  d.addEventListener("keydown",onKey);
+  fitPipLayout(w);
+  let saveT=0;w.addEventListener("resize",()=>{fitPipLayout(w);clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem("mymusic_pip_size",JSON.stringify({w:w.innerWidth,h:w.innerHeight}))}catch{}},400)});
   d.addEventListener("click",onDocClick);
   w.addEventListener("resize",()=>w.requestAnimationFrame(fitTitle));
   w.addEventListener("pagehide",()=>restorePlayer(wasExpanded),{once:true});
-  vuWalkAt=0;vuKickAt=0;vuPrev=0;
+  restartVu();
+  w.requestAnimationFrame(fitTitle);
+}
+// Scale the fixed 390×800 phone layout to fit the pop-out window; extra space becomes background.
+function fitPipLayout(w){
+  const z=Math.max(.4,Math.min(w.innerWidth/390,w.innerHeight/800));
+  w.document.documentElement.style.zoom=String(z);
   w.requestAnimationFrame(fitTitle);
 }
 function restorePlayer(reExpand){
+  if(pipModalHome){const m=pipModalHome.el;m.hidden=true;pipModalHome.parent.insertBefore(m,pipModalHome.next);pipModalHome=null;document.body.classList.remove("folder-modal-open")}
   const player=pipPlayer,ph=document.getElementById("pipPlaceholder");
   pipWin=null;pipPlayer=null;
   if(player&&ph&&!document.getElementById("player")){ph.after(player)}
   if(ph)ph.hidden=true;
-  vuWalkAt=0;vuKickAt=0;vuPrev=0;
+  restartVu();
   if(reExpand)togglePlayerExpand(true);
   requestAnimationFrame(fitTitle);
 }
@@ -401,15 +415,19 @@ function vuTargetDb(now){
   vuKick*=0.9;
   return vuWalk+vuKick+Math.sin(now/97)*0.8+(Math.random()-.5)*1.2;
 }
+let vuRaf=0,vuRafWin=null;
+function scheduleVu(){const w=pipWin&&!pipWin.closed?pipWin:window;vuRafWin=w;vuRaf=w.requestAnimationFrame(vuFrame)}
+function restartVu(){try{if(vuRafWin&&vuRaf)vuRafWin.cancelAnimationFrame(vuRaf)}catch{}vuPrev=0;vuWalkAt=0;vuKickAt=0;scheduleVu()}
 function vuFrame(now){
-  const dt=Math.min(0.05,(now-(vuPrev||now))/1000);vuPrev=now;
+  let dt=(now-(vuPrev||now))/1000;vuPrev=now;if(!(dt>=0))dt=0;if(dt>0.05)dt=0.05;
   const target=vuAngle(vuTargetDb(now)),k=90,c=15;
   vuVel+=((target-vuAng)*k-vuVel*c)*dt;vuAng+=vuVel*dt;
   const a=vuAng.toFixed(2);
   const n=$("vuNeedleLine"),sh=$("vuNeedleShadow");
   if(n)n.setAttribute("transform",`rotate(${a} 408 445)`);if(sh)sh.setAttribute("transform",`rotate(${a} 412 445)`);
-  (pipWin&&!pipWin.closed?pipWin:window).requestAnimationFrame(vuFrame);
+  if(!isFinite(vuAng)||!isFinite(vuVel)){vuAng=-57;vuVel=0}
+  scheduleVu();
 }
-requestAnimationFrame(vuFrame);
+scheduleVu();
 if("serviceWorker"in navigator&&location.protocol.startsWith("http"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(reg=>reg.update()).catch(console.warn));try{if(navigator.audioSession)navigator.audioSession.type="playback"}catch{}
 setPlayIcon("play");initAudioToggles();initAuth();

@@ -1,3 +1,15 @@
+## Alpha 1.9.18
+- Fixed: the VU meter froze in the pop-out when the original tab was in the background. Its animation now runs on whichever window is showing the player, and switches when you pop out or bring it back.
+- VU needle is protected against timing jumps between windows.
+- Bumped service-worker cache to mymusic-shell-v1-9-18.
+
+## Alpha 1.9.17
+- Pop-out shows the full expanded player including Browse folders; the song picker opens inside the pop-out, and picking a song plays it there.
+- Pop-out layout is laid out at the phone design's 390×800 proportions and scaled to fit the window, so spacing never changes when you resize; extra width or height becomes background.
+- First pop-out opens at about 90% of your screen's usable height (clear of the menu bar and Dock) at the matching width; after you resize it, it reopens at your size.
+- Escape closes the picker inside the pop-out.
+- Bumped service-worker cache to mymusic-shell-v1-9-17.
+
 ## Alpha 1.9.16
 - Pop-out player: a new button next to Expand (home and expanded screens) opens the player in its own always-on-top window (400×840, the phone layout). Desktop Chrome, Edge and Firefox only; the button is hidden in Safari and on phones/iPads.
 - Music keeps playing in the original tab; every control in the pop-out works (buttons, knob, Level, seek, VU, Last played / Up next).

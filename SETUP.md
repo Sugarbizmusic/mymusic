@@ -66,3 +66,11 @@ Replace all files (if you haven't already, delete knob-back.png and knob-cap.png
 
 ### Alpha 1.9.16
 Replace all files. Confirm ALPHA 1.9.16. In desktop Chrome the pop-out button appears next to Expand.
+
+
+### Alpha 1.9.17
+Replace all files. Confirm ALPHA 1.9.17.
+
+
+### Alpha 1.9.18
+Replace all files. Confirm ALPHA 1.9.18.
