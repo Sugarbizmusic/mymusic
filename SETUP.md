@@ -74,3 +74,7 @@ Replace all files. Confirm ALPHA 1.9.17.
 
 ### Alpha 1.9.18
 Replace all files. Confirm ALPHA 1.9.18.
+
+
+### Alpha 1.9.19
+Replace all files. Confirm ALPHA 1.9.19. If the pop-out remembers an old size, resize it once.

@@ -1,7 +1,7 @@
-// MyMusic Alpha 1.9.18 — VU meter animates in the pop-out (its animation loop follows the window showing the player).
+// MyMusic Alpha 1.9.19 — tighter pop-out (390×768) with bottom padding; desktop/landscape expanded view puts the art left and controls right.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
-let pipWin=null,pipPlayer=null,pipModalHome=null;
+let pipWin=null,pipPlayer=null,pipModalHome=null,pipDesignH=768;
 const $=id=>document.getElementById(id)||(pipWin&&!pipWin.closed?pipWin.document.getElementById(id):null);
 let audio=$("audio");
 let tokenClient=null,accessToken=null,tracks=[],queue=[],currentIndex=-1,currentObjectUrl=null,standbyObjectUrl=null,currentArtUrl=null,currentFolderId=CONFIG.ROOT_FOLDER_ID,currentFolderPath=[],folderStack=[{id:CONFIG.ROOT_FOLDER_ID,name:"MyMusic"}],scanBusy=false,authPending=false,allSongsMode=false,recentMode=false,pickerMode="folders",tokenExpiresAt=0,pendingActions=[],pendingResumeTrackId=null;
@@ -260,9 +260,9 @@ async function openPopout(){
   const player=$("player");if(!player)return;
   const wasExpanded=document.body.classList.contains("player-expanded");
   let w;
-  const PIP_W=390,PIP_H=800;let size=null;
+  const PIP_W=390,PIP_H=768;let size=null;
   try{const v=JSON.parse(localStorage.getItem("mymusic_pip_size")||"null");if(v&&v.w>=200&&v.h>=400)size=v}catch{}
-  if(!size){const h=Math.max(480,Math.round((screen.availHeight||900)*0.9));size={w:Math.round(h*PIP_W/PIP_H),h}}
+  if(!size){const h=Math.max(480,Math.round((screen.availHeight||900)*0.9));size={w:Math.round(h*PIP_W/pipDesignH),h}}
   try{w=await documentPictureInPicture.requestWindow({width:size.w,height:size.h})}catch(e){console.warn("Pop-out refused",e);setStatus("Couldn't open the pop-out window");return}
   pipWin=w;pipPlayer=player;const d=w.document;
   // styles + fonts
@@ -287,10 +287,13 @@ async function openPopout(){
   restartVu();
   w.requestAnimationFrame(fitTitle);
 }
-// Scale the fixed 390×800 phone layout to fit the pop-out window; extra space becomes background.
+// Scale the fixed 390×768 phone layout to fit the pop-out window; extra space becomes background.
 function fitPipLayout(w){
-  const z=Math.max(.4,Math.min(w.innerWidth/390,w.innerHeight/800));
-  w.document.documentElement.style.zoom=String(z);
+  const root=w.document.documentElement,p=w.document.getElementById("player");
+  root.style.zoom="1";
+  let H=768;if(p){p.style.height="auto";H=Math.max(600,Math.ceil(p.scrollHeight)+1);p.style.height=H+"px";pipDesignH=H}
+  const z=Math.max(.4,Math.min(w.innerWidth/390,w.innerHeight/H));
+  root.style.zoom=String(z);
   w.requestAnimationFrame(fitTitle);
 }
 function restorePlayer(reExpand){

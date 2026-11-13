@@ -1044,3 +1044,46 @@ body.in-pip #expandedBrowseBtn{display:inline-flex!important}
 body.in-pip .folder-modal{padding:16px}
 body.in-pip .folder-dialog{width:358px;max-width:358px;height:min(768px,100%);max-height:100%}
 body.in-pip{min-height:0}
+
+/* ================= Alpha 1.9.19 ================= */
+/* Pop-out: stack tightly (no stretched gap under the title); the design height follows the content */
+body.in-pip .player{height:auto;justify-content:flex-start;padding-bottom:26px}
+body.in-pip .now{flex:none}
+body.in-pip .player-bottom-controls{margin-top:22px}
+body.in-pip .player{height:auto}
+body.in-pip .now small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.in-pip .folder-dialog{height:min(736px,100%)}
+
+/* Desktop / large landscape expanded view: art left, everything else right, both vertically centered */
+@media (min-width:900px) and (orientation:landscape){
+  body.player-expanded:not(.in-pip) .player{
+    display:grid;
+    grid-template-columns:var(--art-size) minmax(340px,460px);
+    grid-template-rows:auto 1fr auto auto 1fr;
+    grid-template-areas:"top top" "art ." "art title" "art ctl" "art .";
+    --art-size:min(44vw, calc(100dvh - 190px), 760px);
+    column-gap:clamp(40px,5vw,84px);
+    justify-content:center;
+    align-items:center;
+    padding-bottom:24px;
+  }
+  body.player-expanded:not(.in-pip) .player-top-bar{grid-area:top;width:100%;justify-self:stretch}
+  body.player-expanded:not(.in-pip) .player > .now{display:contents}
+  body.player-expanded:not(.in-pip) .art-stage{grid-area:art;align-self:center;width:var(--art-size);height:var(--art-size);margin:0}
+  body.player-expanded:not(.in-pip) .art-frame{-webkit-mask-image:none;mask-image:none;border-radius:10px;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+  body.player-expanded:not(.in-pip) .nowtext{grid-area:title;align-self:end;margin:0;padding:0;max-width:none;width:100%;text-shadow:none}
+  body.player-expanded:not(.in-pip) .player-bottom-controls{grid-area:ctl;align-self:start;width:100%;max-width:none;margin:18px 0 0;padding:0}
+  body.player-expanded:not(.in-pip) .player .controls,body.player-expanded:not(.in-pip) .deck{max-width:none}
+  body.player-expanded:not(.in-pip) .queue-peek{display:none}
+}
+body.in-pip .player{padding-bottom:40px}
+@media (min-width:900px) and (orientation:landscape){
+  body.player-expanded:not(.in-pip) .player{
+    grid-template-columns:1fr var(--art-size) minmax(340px,460px) 1fr;
+    grid-template-rows:auto auto 1fr auto auto 1fr;
+    grid-template-areas:"ribbon ribbon ribbon ribbon" "top top top top" ". art . ." ". art title ." ". art ctl ." ". art . .";
+    justify-content:stretch;
+  }
+  body.player-expanded:not(.in-pip) .player-ribbon{grid-area:ribbon;align-self:start}
+  body.player-expanded:not(.in-pip) .player-top-bar{grid-area:top}
+}

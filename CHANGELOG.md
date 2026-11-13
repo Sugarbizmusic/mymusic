@@ -1,3 +1,8 @@
+## Alpha 1.9.19
+- Pop-out: everything below the track name moved up (no stretched gap) and there's ~26pt of padding under the VOL / version labels. The pop-out measures its own content, so the window shape is a little shorter (about 390×786).
+- Desktop and large landscape screens (900pt+ wide, landscape): the expanded view puts the cover art on the left and the title, seek bar, buttons and deck on the right, both vertically centered. The art is larger (up to 760pt), has no fade, and gets rounded corners with a soft shadow.
+- Bumped service-worker cache to mymusic-shell-v1-9-19.
+
 ## Alpha 1.9.18
 - Fixed: the VU meter froze in the pop-out when the original tab was in the background. Its animation now runs on whichever window is showing the player, and switches when you pop out or bring it back.
 - VU needle is protected against timing jumps between windows.
