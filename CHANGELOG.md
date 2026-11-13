@@ -1,3 +1,19 @@
+## Alpha 1.9.15
+- iPhone: the volume knob sits at full, which is what the app actually outputs (iOS always plays web audio at 100% and the side buttons scale it; web apps can't read or change that level).
+- iPhone: dragging the knob (6pt or more of movement), scrolling on it or using arrow keys shows a short note: "Use the side buttons for volume". A plain tap shows nothing.
+- Other devices: the knob works as before and remembers its setting.
+- Wide screens (820pt and up: desktop, iPad landscape): the home player runs the knob, transport buttons, Level and VU meter in one row under the seek bar. Phones keep the stacked layout.
+- Bumped service-worker cache to mymusic-shell-v1-9-15.
+
+## Alpha 1.9.14
+- New volume knob artwork (tick ring). The knob image stays still and a drawn indicator line turns with the volume (-132° to +132°).
+- Expanded player: the full cover art is shown uncropped as a square, and its bottom fades into the background under the track name (vinyl overlay kept).
+- Expanded player: the track name stays on one line and shrinks to fit (down to 15pt, then "…" for extremely long names).
+- Level now applies to the song that's playing straight away (it re-processes the current song and carries on from the same spot) and shows the adjustment, e.g. "Level on · +4.6 dB on this song".
+- Button icons: softer edge pulled back and drawn with an SVG filter; the "15" labels are now drawn shapes instead of text. Fixes the magenta corner marks some iPhones drew on the skip buttons.
+- Removed knob-back.png and knob-cap.png; added knob.png.
+- Bumped service-worker cache to mymusic-shell-v1-9-14.
+
 ## Alpha 1.9.13
 - Vintage deck styling: the five transport buttons are hardware push buttons, all the same size across the full width.
   - Prev / Back 15 / Forward 15 / Next: press in and light while held, stay lit for a moment after release, then go dark.

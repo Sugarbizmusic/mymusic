@@ -54,3 +54,11 @@ Replace all files, close and reopen the app, confirm ALPHA 1.9.12.
 
 ### Alpha 1.9.13
 Replace all files — there are 7 new image files (buttons, knob, VU meter), 18 files total. Close and reopen the app, confirm ALPHA 1.9.13.
+
+
+### Alpha 1.9.14
+Replace all files and delete knob-back.png and knob-cap.png from the repo (replaced by knob.png). Close and reopen the app, confirm ALPHA 1.9.14.
+
+
+### Alpha 1.9.15
+Replace all files (if you haven't already, delete knob-back.png and knob-cap.png). Confirm ALPHA 1.9.15.

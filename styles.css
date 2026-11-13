@@ -978,3 +978,45 @@ body.player-expanded .art-gradient{height:20%;background:linear-gradient(180deg,
 .deck{justify-content:space-between}
 .level-unit{margin:0 auto}
 .level-unit{left:-1.1px}
+
+/* ================= Alpha 1.9.14 ================= */
+/* Printed cap icons: softer edge drawn by an SVG filter (no CSS blur / blend modes — those glitched on iPhone) */
+.player .controls .hw-btn svg{filter:none;mix-blend-mode:normal;color:rgba(78,26,66,.55)}
+.player .controls .hw-btn svg>*{filter:url(#ink)}
+.player .controls .hw-btn.lit svg{color:rgba(104,34,58,.58)}
+
+/* New tick-ring volume knob: image stays still, only the indicator line turns */
+.vol-knob,body.player-expanded .vol-knob{width:100px;height:100px}
+.knob-unit{top:0;margin:-2px 0}
+.knob-unit .deck-label{top:calc(100% + 4px)}
+.vol-knob img.knob-img{position:absolute;inset:0;width:100%;height:100%}
+.knob-line{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+
+/* Expanded: full, uncropped square art; bottom fades into the background under the title */
+body.player-expanded .art-stage{height:auto;width:min(100%, calc(100dvh - 400px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));aspect-ratio:1/1;margin:0 auto}
+body.player-expanded .art-frame{-webkit-mask-image:linear-gradient(180deg,#000 0%,#000 66%,rgba(0,0,0,.45) 86%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,#000 66%,rgba(0,0,0,.45) 86%,transparent 100%)}
+body.player-expanded .art-gradient{display:none}
+body.player-expanded .artwork{object-fit:cover;object-position:center}
+body.player-expanded .nowtext{position:relative;z-index:4;margin-top:-62px;text-shadow:0 1px 12px rgba(17,7,18,.65)}
+/* One-line title, auto-shrunk by fitTitle() */
+body.player-expanded .now strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;-webkit-line-clamp:unset}
+body.player-expanded .art-stage{width:min(100%, calc(100dvh - 362px - env(safe-area-inset-top) - env(safe-area-inset-bottom)))}
+
+/* 1.9.15 · iPhone volume note (shown only when the knob is dragged) */
+.knob-note{position:absolute;left:-4px;bottom:calc(100% + 10px);width:210px;padding:10px 12px;border-radius:12px;background:#2a1530;border:1px solid rgba(243,224,181,.28);box-shadow:0 10px 28px rgba(0,0,0,.55);color:var(--cream);font-size:11.5px;line-height:1.35;z-index:20;opacity:0;transform:translateY(4px);transition:opacity .18s ease,transform .18s ease;pointer-events:none}
+.knob-note strong{display:block;font-size:12.5px;margin-bottom:3px;color:#fff2d6}
+.knob-note span{color:var(--cream-soft)}
+.knob-note.show{opacity:1;transform:none}
+.knob-note::after{content:"";position:absolute;left:44px;top:100%;border:7px solid transparent;border-top-color:#2a1530}
+
+/* 1.9.15 · Wide screens (desktop, iPad landscape): home player deck in a single row */
+@media (min-width:820px){
+  body:not(.player-expanded) .player-bottom-controls{display:grid;grid-template-columns:auto 1fr auto auto;grid-template-areas:"seek seek seek seek" "knob ctl level vu";column-gap:30px;align-items:center;padding-bottom:22px}
+  body:not(.player-expanded) .seek-wrap{grid-area:seek}
+  body:not(.player-expanded) .deck{display:contents}
+  body:not(.player-expanded) .knob-unit{grid-area:knob;margin:0}
+  body:not(.player-expanded) .player .controls{grid-area:ctl;width:100%;max-width:400px;margin:10px auto}
+  body:not(.player-expanded) .level-unit{grid-area:level;margin:0;left:0}
+  body:not(.player-expanded) .vu-unit{grid-area:vu;margin:0}
+}
+@media (min-width:820px){body:not(.player-expanded) .vu-unit{width:178px}}

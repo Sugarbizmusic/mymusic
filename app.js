@@ -1,4 +1,4 @@
-// MyMusic Alpha 1.9.13 — vintage deck: hardware push buttons, rotary volume knob, VU meter, latching Level button; full-bleed logo art; breadcrumb back button.
+// MyMusic Alpha 1.9.15 — iPhone: volume knob shows the app's fixed full output; dragging it explains the side buttons (taps do nothing).
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 const $=id=>document.getElementById(id);
@@ -17,6 +17,14 @@ const ICONS={
   expand:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>',
   collapse:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg>'
 };
+function fitTitle(){
+  const el=$("trackTitle");if(!el)return;el.style.fontSize="";
+  if(!document.body.classList.contains("player-expanded"))return;
+  const max=parseFloat(getComputedStyle(el).fontSize)||34,min=15;let size=max;
+  el.style.fontSize=size+"px";
+  while(size>min&&el.scrollWidth>el.clientWidth+1){size-=1;el.style.fontSize=size+"px"}
+}
+addEventListener("resize",()=>requestAnimationFrame(fitTitle));
 function setPlayIcon(state){const b=$("playBtn");if(!b)return;b.innerHTML=ICONS[state]||ICONS.play;b.dataset.state=state;b.classList.toggle("lit",state!=="play");b.setAttribute("aria-label",state==="pause"?"Pause":state==="loading"?"Loading":"Play")}
 // ---- Listening history (Recent songs + Last played) ----
 const HISTORY_KEY="mymusic_history_v1",HISTORY_MAX=30;
@@ -136,7 +144,22 @@ function toggleLeveling(){
   try{localStorage.setItem(LEVEL_KEY,levelEnabled?"yes":"no")}catch{}
   updateToggleButtons();
   leveledCache.clear();
-  setStatus(levelEnabled?"Level on · applies from the next song":"Level off · applies from the next song");
+  reapplyLevel();
+}
+// Re-process the song that's playing so Level is heard right away (same audio element: screen-off safe).
+let currentRaw=null,levelJob=0;
+async function reapplyLevel(){
+  const job=++levelJob,raw=currentRaw,cur=queue[currentIndex];
+  if(!raw||!cur||raw.id!==cur.id||!audio.src){setStatus(levelEnabled?"Level on":"Level off");return}
+  setStatus(levelEnabled?"Level on · adjusting this song…":"Level off · restoring this song…");
+  const blob=levelEnabled?await levelBlob(raw.id,raw.blob):raw.blob;
+  if(job!==levelJob||queue[currentIndex]?.id!==raw.id)return;
+  const t=audio.currentTime,wasPlaying=!audio.paused,old=currentObjectUrl;
+  currentObjectUrl=URL.createObjectURL(blob);audio.src=currentObjectUrl;
+  audio.addEventListener("loadedmetadata",()=>{try{audio.currentTime=t}catch{}if(wasPlaying)audio.play().catch(()=>{})},{once:true});
+  audio.load();if(old)setTimeout(()=>URL.revokeObjectURL(old),2000);
+  const g=gainCache.get(raw.id);
+  setStatus(levelEnabled?(g&&Math.abs(g-1)>=.08?`Level on · ${g>1?"+":""}${(20*Math.log10(g)).toFixed(1)} dB on this song`:"Level on · this song is already at the target level"):"Level off");
 }
 async function prefetchNextTrack(){
   if(queue.length<2||currentIndex<0||!tokenValid())return;
@@ -178,7 +201,7 @@ function renderPickerList(){
 }
 function markPickerCurrent(){const cur=queue[currentIndex]?.id;document.querySelectorAll("#folderList .folder-track").forEach(b=>b.classList.toggle("current",b.dataset.id===cur))}
 function closeFolderModal(){$("folderModal").hidden=true;["folderToggle","allSongsBtn","recentBtn"].forEach(id=>{const b=$(id);if(b)b.setAttribute("aria-expanded","false")});document.body.classList.remove("folder-modal-open")}
-function togglePlayerExpand(force){const next=typeof force==="boolean"?force:!document.body.classList.contains("player-expanded");document.body.classList.toggle("player-expanded",next);if($("expandBtn")){$("expandBtn").setAttribute("aria-expanded",String(next));$("expandBtn").innerHTML=next?ICONS.collapse:ICONS.expand;$("expandBtn").title=next?"Collapse player":"Expand player";$("expandBtn").setAttribute("aria-label",next?"Collapse player":"Expand player")}}
+function togglePlayerExpand(force){const next=typeof force==="boolean"?force:!document.body.classList.contains("player-expanded");document.body.classList.toggle("player-expanded",next);requestAnimationFrame(fitTitle);if($("expandBtn")){$("expandBtn").setAttribute("aria-expanded",String(next));$("expandBtn").innerHTML=next?ICONS.collapse:ICONS.expand;$("expandBtn").title=next?"Collapse player":"Expand player";$("expandBtn").setAttribute("aria-label",next?"Collapse player":"Expand player")}}
 async function navigateTo(depth){allSongsMode=false;recentMode=false;folderStack=folderStack.slice(0,depth+1);currentFolderId=folderStack.at(-1).id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
 async function enterFolder(f){allSongsMode=false;recentMode=false;folderStack.push({id:f.id,name:f.name});currentFolderId=f.id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
 function renderFolderContents(){renderBreadcrumbs();$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';return withToken(_renderFolderContents).catch(e=>{$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)} · tap Reconnect Drive</div>`})}
@@ -260,7 +283,7 @@ function playTrackById(id,fromAutoplay=false,opts={}){
   hideResumePrompt();
   return withToken(()=>_playTrackById(id,opts)).catch(e=>{console.warn(e);setPlayIcon("play");setStatus("Drive sign-in needed · tap to continue");showResumePrompt(id)});
 }
-async function _playTrackById(id,opts={}){const idx=queue.findIndex(t=>t.id===id);if(idx<0)return;currentIndex=idx;const t=queue[idx],i=trackInfo(t);$("trackTitle").textContent=i.title;$("trackSubtitle").textContent=i.subtitle;$("queueLabel").textContent=i.artist.toUpperCase();setPlayIcon("loading");setStatus("Loading track…");try{const blobPromise=prefetchedNextId===t.id&&prefetchedBlob?Promise.resolve(prefetchedBlob):downloadFile(t.id);prefetchedNextId=null;prefetchedBlob=null;let [blob]=await Promise.all([blobPromise,loadArtwork(t).catch(err=>{console.warn("Artwork unavailable",err)})]);blob=await levelBlob(t.id,blob);if(currentObjectUrl)URL.revokeObjectURL(currentObjectUrl);currentObjectUrl=URL.createObjectURL(blob);audio.src=currentObjectUrl;audio.load();await audio.play();hideResumePrompt();if(!opts.noHistory)pushHistory(t.id);setStatus("Playing");renderTracks();updateMediaSession(t,i)}catch(e){console.error(e);setPlayIcon("play");if(!tokenValid()){setStatus("Drive sign-in expired · tap to continue");showResumePrompt(id)}else{setStatus("Playback unavailable");alert(`This track couldn't be loaded.\n\n${e.message}`)}}}
+async function _playTrackById(id,opts={}){const idx=queue.findIndex(t=>t.id===id);if(idx<0)return;currentIndex=idx;const t=queue[idx],i=trackInfo(t);$("trackTitle").textContent=i.title;$("trackSubtitle").textContent=i.subtitle;$("queueLabel").textContent=i.artist.toUpperCase();fitTitle();setPlayIcon("loading");setStatus("Loading track…");try{const blobPromise=prefetchedNextId===t.id&&prefetchedBlob?Promise.resolve(prefetchedBlob):downloadFile(t.id);prefetchedNextId=null;prefetchedBlob=null;let [blob]=await Promise.all([blobPromise,loadArtwork(t).catch(err=>{console.warn("Artwork unavailable",err)})]);currentRaw={id:t.id,blob};blob=await levelBlob(t.id,blob);if(currentObjectUrl)URL.revokeObjectURL(currentObjectUrl);currentObjectUrl=URL.createObjectURL(blob);audio.src=currentObjectUrl;audio.load();await audio.play();hideResumePrompt();if(!opts.noHistory)pushHistory(t.id);setStatus("Playing");renderTracks();updateMediaSession(t,i)}catch(e){console.error(e);setPlayIcon("play");if(!tokenValid()){setStatus("Drive sign-in expired · tap to continue");showResumePrompt(id)}else{setStatus("Playback unavailable");alert(`This track couldn't be loaded.\n\n${e.message}`)}}}
 function updateMediaSession(t,i){if(!("mediaSession"in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:i.title,artist:i.artist,album:i.release,artwork:currentArtUrl?[{src:currentArtUrl,sizes:"512x512"}]:[]});const h={play:()=>audio.play(),pause:()=>audio.pause(),previoustrack:playPrevious,nexttrack:()=>playNext(false),seekbackward:()=>audio.currentTime=Math.max(0,audio.currentTime-15),seekforward:()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+15)};for(const[a,fn]of Object.entries(h)){try{navigator.mediaSession.setActionHandler(a,fn)}catch{}}}
 function playNext(fromAutoplay=false){if(queue.length)playTrackById(queue[(currentIndex+1)%queue.length].id,fromAutoplay)}function playPrevious(){if(!queue.length)return;if(audio.currentTime>3){audio.currentTime=0;return}playTrackById(queue[(currentIndex-1+queue.length)%queue.length].id,false)}
 $("playBtn").onclick=()=>{if(pendingResumeTrackId){playTrackById(pendingResumeTrackId,false);return}if(!audio.src){if(queue.length)playTrackById(queue[0].id,false)}else if(audio.paused){audio.play()}else audio.pause()};$("nextBtn").onclick=()=>playNext(false);$("backBtn").onclick=playPrevious;$("rewindBtn").onclick=()=>audio.currentTime=Math.max(0,audio.currentTime-15);$("forwardBtn").onclick=()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+15);
@@ -288,26 +311,36 @@ document.querySelectorAll(".hw-btn").forEach(b=>{
   ["pointerup","pointercancel","pointerleave"].forEach(ev=>b.addEventListener(ev,release));
   b.addEventListener("click",e=>{if(e.detail===0&&mode==="momentary")flash()});
 });
-const KNOB_REST=144,KNOB_MIN=-135,KNOB_MAX=135,VOL_KEY="mymusic_volume_v1";
-const volumeWritable=(()=>{try{const t=document.createElement("audio");t.volume=.5;return Math.abs(t.volume-.5)<.01}catch{return true}})();
+const KNOB_MIN=-132,KNOB_MAX=132,KNOB_CX=177/347,KNOB_CY=176/347,VOL_KEY="mymusic_volume_v1";
+const volumeWritable=(()=>{try{if(localStorage.getItem("mymusic_debug_fixedvol")==="yes")return false;const t=document.createElement("audio");t.volume=.5;return Math.abs(t.volume-.5)<.01}catch{return true}})();
 let knobVal=.85;try{const v=parseFloat(localStorage.getItem(VOL_KEY));if(v>=0&&v<=1)knobVal=v}catch{}
+if(!volumeWritable)knobVal=1; // iPhone: the page always plays at full; the side buttons set the level
 function setVolume(v,save=true){
   knobVal=Math.max(0,Math.min(1,v));$("volume").value=knobVal;try{audio.volume=knobVal}catch{}
-  const cap=$("knobCap");if(cap)cap.style.transform=`rotate(${KNOB_MIN+(KNOB_MAX-KNOB_MIN)*knobVal-KNOB_REST}deg)`;
+  const ln=$("knobLine");if(ln)ln.setAttribute("transform",`rotate(${(KNOB_MIN+(KNOB_MAX-KNOB_MIN)*knobVal).toFixed(1)} 177 176)`);
   const k=$("volKnob");if(k)k.setAttribute("aria-valuenow",String(Math.round(knobVal*100)));
   if(save)try{localStorage.setItem(VOL_KEY,String(knobVal))}catch{}
 }
 setVolume(knobVal,false);
-(()=>{const k=$("volKnob");if(!k)return;let last=null,lastY=0,warned=false;
-  const polar=e=>{const r=k.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);return{a:Math.atan2(dx,-dy)*180/Math.PI,d:Math.hypot(dx,dy)}};
-  k.addEventListener("pointerdown",e=>{e.preventDefault();try{k.setPointerCapture(e.pointerId)}catch{}last=polar(e).a;lastY=e.clientY;
-    if(!volumeWritable&&!warned){warned=true;setStatus("iPhone sets volume with its side buttons")}});
-  k.addEventListener("pointermove",e=>{if(last===null)return;const p=polar(e);let d;
-    if(p.d>14){d=p.a-last;if(d>180)d-=360;if(d<-180)d+=360;d/=270}else d=(lastY-e.clientY)/160;
+function showKnobNote(){
+  let n=$("knobNote");
+  if(!n){n=document.createElement("div");n.id="knobNote";n.className="knob-note";n.setAttribute("role","status");
+    n.innerHTML='<strong>Use the side buttons for volume</strong><span>iPhone doesn\'t let web apps change or read the volume.</span>';
+    $("volKnob").parentElement.appendChild(n)}
+  n.classList.add("show");clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove("show"),2600);
+}
+(()=>{const k=$("volKnob");if(!k)return;let last=null,lastY=0,sx=0,sy=0,dragging=false;const r0=()=>k.getBoundingClientRect().width*.16;
+  if(!volumeWritable)k.setAttribute("aria-readonly","true");
+  const polar=e=>{const r=k.getBoundingClientRect(),dx=e.clientX-(r.left+r.width*KNOB_CX),dy=e.clientY-(r.top+r.height*KNOB_CY);return{a:Math.atan2(dx,-dy)*180/Math.PI,d:Math.hypot(dx,dy)}};
+  k.addEventListener("pointerdown",e=>{e.preventDefault();try{k.setPointerCapture(e.pointerId)}catch{}last=polar(e).a;lastY=sy=e.clientY;sx=e.clientX;dragging=false});
+  k.addEventListener("pointermove",e=>{if(last===null)return;
+    if(!dragging){if(Math.hypot(e.clientX-sx,e.clientY-sy)<6)return;dragging=true;if(!volumeWritable){showKnobNote();last=null;return}}
+    const p=polar(e);let d;
+    if(p.d>r0()){d=p.a-last;if(d>180)d-=360;if(d<-180)d+=360;d/=270}else d=(lastY-e.clientY)/160;
     last=p.a;lastY=e.clientY;setVolume(knobVal+d)});
-  const end=()=>{last=null};k.addEventListener("pointerup",end);k.addEventListener("pointercancel",end);
-  k.addEventListener("wheel",e=>{e.preventDefault();setVolume(knobVal-e.deltaY/1200)},{passive:false});
-  k.addEventListener("keydown",e=>{const m={ArrowUp:.05,ArrowRight:.05,ArrowDown:-.05,ArrowLeft:-.05}[e.key];if(m){e.preventDefault();setVolume(knobVal+m)}});
+  const end=()=>{last=null;dragging=false};k.addEventListener("pointerup",end);k.addEventListener("pointercancel",end);
+  k.addEventListener("wheel",e=>{e.preventDefault();if(!volumeWritable){showKnobNote();return}setVolume(knobVal-e.deltaY/1200)},{passive:false});
+  k.addEventListener("keydown",e=>{const m={ArrowUp:.05,ArrowRight:.05,ArrowDown:-.05,ArrowLeft:-.05}[e.key];if(m){e.preventDefault();if(!volumeWritable){showKnobNote();return}setVolume(knobVal+m)}});
 })();
 // VU needle: follows the song's real loudness when Level has analysed it, otherwise a convincing simulation.
 const VU_TABLE=[[-40,-57],[-20,-48.3],[-10,-34.1],[-7,-24.6],[-5,-15.6],[-3,-3.6],[-2,3.1],[-1,11.2],[0,21.8],[1,31.1],[2,42],[3,51],[6,55]];
