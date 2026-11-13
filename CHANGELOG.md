@@ -1,3 +1,10 @@
+## Alpha 1.9.16
+- Pop-out player: a new button next to Expand (home and expanded screens) opens the player in its own always-on-top window (400×840, the phone layout). Desktop Chrome, Edge and Firefox only; the button is hidden in Safari and on phones/iPads.
+- Music keeps playing in the original tab; every control in the pop-out works (buttons, knob, Level, seek, VU, Last played / Up next).
+- While popped out, the page shows "Playing in the pop-out window" with a "Bring player back" button. Closing the pop-out (or Chrome's back-to-tab button) also brings the player back.
+- Inside the pop-out the Expand, Pop-out and Browse buttons are hidden.
+- Bumped service-worker cache to mymusic-shell-v1-9-16.
+
 ## Alpha 1.9.15
 - iPhone: the volume knob sits at full, which is what the app actually outputs (iOS always plays web audio at 100% and the side buttons scale it; web apps can't read or change that level).
 - iPhone: dragging the knob (6pt or more of movement), scrolling on it or using arrow keys shows a short note: "Use the side buttons for volume". A plain tap shows nothing.

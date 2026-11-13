@@ -1,7 +1,8 @@
-// MyMusic Alpha 1.9.15 — iPhone: volume knob shows the app's fixed full output; dragging it explains the side buttons (taps do nothing).
+// MyMusic Alpha 1.9.16 — pop-out player (Document Picture-in-Picture: Chrome, Edge, Firefox on desktop).
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
-const $=id=>document.getElementById(id);
+let pipWin=null,pipPlayer=null;
+const $=id=>document.getElementById(id)||(pipWin&&!pipWin.closed?pipWin.document.getElementById(id):null);
 let audio=$("audio");
 let tokenClient=null,accessToken=null,tracks=[],queue=[],currentIndex=-1,currentObjectUrl=null,standbyObjectUrl=null,currentArtUrl=null,currentFolderId=CONFIG.ROOT_FOLDER_ID,currentFolderPath=[],folderStack=[{id:CONFIG.ROOT_FOLDER_ID,name:"MyMusic"}],scanBusy=false,authPending=false,allSongsMode=false,recentMode=false,pickerMode="folders",tokenExpiresAt=0,pendingActions=[],pendingResumeTrackId=null;
 let gainCache=new Map(),levelEnabled=false,prefetchedNextId=null,prefetchedBlob=null;
@@ -19,7 +20,7 @@ const ICONS={
 };
 function fitTitle(){
   const el=$("trackTitle");if(!el)return;el.style.fontSize="";
-  if(!document.body.classList.contains("player-expanded"))return;
+  if(!el.ownerDocument.body.classList.contains("player-expanded"))return;
   const max=parseFloat(getComputedStyle(el).fontSize)||34,min=15;let size=max;
   el.style.fontSize=size+"px";
   while(size>min&&el.scrollWidth>el.clientWidth+1){size-=1;el.style.fontSize=size+"px"}
@@ -213,7 +214,11 @@ async function scanLibrary(){if(!accessToken||scanBusy)return;scanBusy=true;setS
 function showAllSongs(){openPicker("all")}
 $("pickerSearch").addEventListener("input",()=>{if(pickerMode!=="folders")renderPickerList()});
 
-document.addEventListener("click",event=>{
+function onDocClick(event){
+  const pop=event.target.closest("#popoutBtn");
+  if(pop){event.preventDefault();openPopout();return}
+  const ret=event.target.closest("#pipReturnBtn");
+  if(ret){event.preventDefault();closePopout();return}
   const browse=event.target.closest("#folderToggle, #expandedBrowseBtn");
   if(browse){
     event.preventDefault();
@@ -244,7 +249,47 @@ document.addEventListener("click",event=>{
     toggleLeveling();
     return;
   }
-});
+}
+document.addEventListener("click",onDocClick);
+// ---- Pop-out player (Document Picture-in-Picture) ----
+const PIP_OK="documentPictureInPicture" in window;
+if(PIP_OK&&$("popoutBtn"))$("popoutBtn").hidden=false;
+async function openPopout(){
+  if(!PIP_OK)return;
+  if(pipWin&&!pipWin.closed){pipWin.focus();return}
+  const player=$("player");if(!player)return;
+  const wasExpanded=document.body.classList.contains("player-expanded");
+  let w;
+  try{w=await documentPictureInPicture.requestWindow({width:400,height:840})}catch(e){console.warn("Pop-out refused",e);setStatus("Couldn't open the pop-out window");return}
+  pipWin=w;pipPlayer=player;const d=w.document;
+  // styles + fonts
+  document.querySelectorAll('link[rel="stylesheet"],style').forEach(n=>{const c=n.cloneNode(true);if(c.tagName==="LINK")c.href=n.href;d.head.appendChild(c)});
+  const meta=d.createElement("meta");meta.name="viewport";meta.content="width=device-width,initial-scale=1";d.head.appendChild(meta);
+  d.title="MyMusic";
+  d.body.className="player-expanded in-pip";
+  // shared SVG defs (soft ink filter for the button icons)
+  const defs=document.querySelector("#ink")?.closest("svg");if(defs)d.body.appendChild(defs.cloneNode(true));
+  // absolute image URLs before moving into the new document
+  player.querySelectorAll("img").forEach(i=>{if(i.getAttribute("src")&&!/^(blob:|data:)/.test(i.getAttribute("src")))i.src=i.src});
+  if(wasExpanded)togglePlayerExpand(false);
+  $("pipPlaceholder").hidden=false;
+  d.body.appendChild(player);
+  d.addEventListener("click",onDocClick);
+  w.addEventListener("resize",()=>w.requestAnimationFrame(fitTitle));
+  w.addEventListener("pagehide",()=>restorePlayer(wasExpanded),{once:true});
+  vuWalkAt=0;vuKickAt=0;vuPrev=0;
+  w.requestAnimationFrame(fitTitle);
+}
+function restorePlayer(reExpand){
+  const player=pipPlayer,ph=document.getElementById("pipPlaceholder");
+  pipWin=null;pipPlayer=null;
+  if(player&&ph&&!document.getElementById("player")){ph.after(player)}
+  if(ph)ph.hidden=true;
+  vuWalkAt=0;vuKickAt=0;vuPrev=0;
+  if(reExpand)togglePlayerExpand(true);
+  requestAnimationFrame(fitTitle);
+}
+function closePopout(){const w=pipWin;if(!w)return;restorePlayer(false);try{w.close()}catch{}}
 
 window.MyMusicApp=Object.freeze({
   openFolderModal,
@@ -363,7 +408,7 @@ function vuFrame(now){
   const a=vuAng.toFixed(2);
   const n=$("vuNeedleLine"),sh=$("vuNeedleShadow");
   if(n)n.setAttribute("transform",`rotate(${a} 408 445)`);if(sh)sh.setAttribute("transform",`rotate(${a} 412 445)`);
-  requestAnimationFrame(vuFrame);
+  (pipWin&&!pipWin.closed?pipWin:window).requestAnimationFrame(vuFrame);
 }
 requestAnimationFrame(vuFrame);
 if("serviceWorker"in navigator&&location.protocol.startsWith("http"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(reg=>reg.update()).catch(console.warn));try{if(navigator.audioSession)navigator.audioSession.type="playback"}catch{}

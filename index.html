@@ -53,12 +53,14 @@
     <div id="folderList" class="folder-list"></div>
   </section>
 </div>
+<div id="pipPlaceholder" class="pip-placeholder panel" hidden><div class="pip-ph-text"><strong>Playing in the pop-out window</strong><span>Close the pop-out, or bring it back here.</span></div><button type="button" id="pipReturnBtn" class="outline small-btn">Bring player back</button></div>
 <section id="player" class="player panel">
   <div class="funk-ribbon player-ribbon" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <div class="player-top-bar">
     <span class="eyebrow player-eyebrow">NOW PLAYING</span>
     <div class="player-top-actions">
       <button type="button" id="expandedBrowseBtn" class="outline small-btn expanded-only" aria-haspopup="dialog">📁 Browse folders</button>
+      <button type="button" id="popoutBtn" class="icon-btn" aria-label="Pop out player" title="Pop out into its own window" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-8.5 8.5"/><path d="M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/></svg></button>
       <button type="button" id="expandBtn" class="icon-btn" aria-label="Expand player" aria-expanded="false" title="Expand player"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button>
     </div>
   </div>
@@ -108,7 +110,7 @@
         <img src="./vu-meter.png" alt="" class="vu-face" draggable="false">
         <svg class="vu-needle" viewBox="0 0 870 471" preserveAspectRatio="none"><defs><clipPath id="vuClip"><rect x="70" y="74" width="722" height="322" rx="4"/></clipPath></defs><g clip-path="url(#vuClip)"><line id="vuNeedleShadow" x1="412" y1="445" x2="412" y2="148" stroke="rgba(60,20,0,.28)" stroke-width="5" stroke-linecap="round"/><line id="vuNeedleLine" x1="408" y1="445" x2="408" y2="148" stroke="#20130c" stroke-width="3.6" stroke-linecap="round"/></g></svg>
       </div>
-      <span class="version">ALPHA 1.9.15</span>
+      <span class="version">ALPHA 1.9.16</span>
       </div>
     </div>
     <div class="player-footer">

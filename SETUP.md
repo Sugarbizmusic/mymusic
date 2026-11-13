@@ -62,3 +62,7 @@ Replace all files and delete knob-back.png and knob-cap.png from the repo (repla
 
 ### Alpha 1.9.15
 Replace all files (if you haven't already, delete knob-back.png and knob-cap.png). Confirm ALPHA 1.9.15.
+
+
+### Alpha 1.9.16
+Replace all files. Confirm ALPHA 1.9.16. In desktop Chrome the pop-out button appears next to Expand.
