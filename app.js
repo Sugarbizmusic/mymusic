@@ -1,6 +1,35 @@
-// Hi-Fi45 Alpha 1.9.26 — custom order for songs and folders (hifi45-order.json in the library's top folder; view-only users save on their device).
+// Hi-Fi45 Alpha 1.9.27 — event log for finding the song-loading and car-playback problems (tap the version label 5 times to open it; nothing else changed).
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
+
+// ---- Event log (1.9.27): last 400 events kept in localStorage. Open it by tapping the version label 5 times, or HiFi45App.getLog() ----
+const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.27";let logBuf=[];
+try{logBuf=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");if(!Array.isArray(logBuf))logBuf=[]}catch{logBuf=[]}
+// entry: [time, tag, message, V/H (page visible/hidden), repeat count, last time, collapse key]
+function hlog(tag,msg="",key){try{const now=Date.now(),vis=document.visibilityState==="hidden"?"H":"V";msg=String(msg).slice(0,220);
+  if(key){for(let i=logBuf.length-1;i>=Math.max(0,logBuf.length-4);i--){const e=logBuf[i];if(e[1]===tag&&e[6]===key){e[2]=msg;e[4]=(e[4]||1)+1;e[5]=now;e[3]=vis;localStorage.setItem(LOG_KEY,JSON.stringify(logBuf));return}}}
+  logBuf.push([now,tag,msg,vis,1,now,key||""]);if(logBuf.length>LOG_MAX)logBuf.splice(0,logBuf.length-LOG_MAX);localStorage.setItem(LOG_KEY,JSON.stringify(logBuf))}catch{}}
+const logClock=t=>{const d=new Date(t),p=(n,w=2)=>String(n).padStart(w,"0");return `${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`};
+function logText(){const head=`Hi-Fi45 ${APP_VERSION} log · ${logClock(Date.now())} · ${navigator.userAgent}\nV = page visible, H = page hidden (screen locked or app in background)\n`;
+  return head+logBuf.map(e=>`${logClock(e[0])} ${e[3]} ${e[1]} ${e[2]}${e[4]>1?` (x${e[4]} until ${logClock(e[5])})`:""}`).join("\n")}
+function clearLog(){logBuf=[];try{localStorage.removeItem(LOG_KEY)}catch{}hlog("log-cleared")}
+function showLog(){
+  let ov=document.getElementById("hifi45LogPanel");if(ov)ov.remove();
+  ov=document.createElement("div");ov.id="hifi45LogPanel";
+  ov.innerHTML=`<div class="logbar"><strong>Event log</strong><span class="logbtns"><button type="button" data-a="share">Share</button><button type="button" data-a="copy">Copy</button><button type="button" data-a="clear">Clear</button><button type="button" data-a="close">Close</button></span></div><textarea readonly spellcheck="false"></textarea>`;
+  const ta=ov.querySelector("textarea");ta.value=logText();
+  ov.onclick=async e=>{const a=e.target?.dataset?.a;if(!a)return;
+    if(a==="close")ov.remove();
+    else if(a==="clear"){clearLog();ta.value=logText()}
+    else if(a==="copy"){try{await navigator.clipboard.writeText(ta.value)}catch{ta.focus();ta.select();try{document.execCommand("copy")}catch{}}e.target.textContent="Copied"}
+    else if(a==="share"){try{if(navigator.share)await navigator.share({title:"Hi-Fi45 log",text:ta.value});else{await navigator.clipboard.writeText(ta.value);e.target.textContent="Copied"}}catch{}}};
+  document.body.appendChild(ov);ta.scrollTop=ta.scrollHeight;
+}
+{let taps=[];document.addEventListener("click",e=>{if(!e.target.closest?.(".version"))return;const n=Date.now();taps=taps.filter(t=>n-t<3000);taps.push(n);if(taps.length>=5){taps=[];showLog()}})}
+{const nav=(performance.getEntriesByType?.("navigation")||[])[0];hlog("boot",`v${APP_VERSION} load=${nav?.type||"?"} standalone=${navigator.standalone===true} online=${navigator.onLine}`);
+  document.addEventListener("visibilitychange",()=>hlog("visibility",document.visibilityState));
+  addEventListener("pagehide",e=>hlog("pagehide",`persisted=${e.persisted}`));addEventListener("pageshow",e=>hlog("pageshow",`persisted=${e.persisted}`));
+  addEventListener("online",()=>hlog("network","online"));addEventListener("offline",()=>hlog("network","offline"))}
 let pipWin=null,pipPlayer=null,pipModalHome=null,pipDesignH=768;
 const $=id=>document.getElementById(id)||(pipWin&&!pipWin.closed?pipWin.document.getElementById(id):null);
 let audio=$("audio");
@@ -267,12 +296,12 @@ function finishOrderEdit(reset=false){
 const TOKEN_KEY="mymusic_token_v1",AUTH_KEY="mymusic_drive_authorized";
 function tokenValid(){return !!accessToken&&Date.now()<tokenExpiresAt-60000}
 function saveToken(){try{localStorage.setItem(TOKEN_KEY,JSON.stringify({t:accessToken,e:tokenExpiresAt,s:grantedScopes}))}catch{}}
-function loadToken(){try{const o=JSON.parse(localStorage.getItem(TOKEN_KEY)||"null");if(o&&o.t&&Date.now()<o.e-60000){accessToken=o.t;tokenExpiresAt=o.e;grantedScopes=o.s||"";return true}}catch{}return false}
-function authExpired(msg){accessToken=null;tokenExpiresAt=0;try{localStorage.removeItem(TOKEN_KEY)}catch{}showConnectScreen(msg||"Drive sign-in expired · tap a track or Reconnect")}
+function loadToken(){try{const o=JSON.parse(localStorage.getItem(TOKEN_KEY)||"null");if(o&&o.t&&Date.now()<o.e-60000){accessToken=o.t;tokenExpiresAt=o.e;grantedScopes=o.s||"";hlog("token-loaded",`${Math.round((o.e-Date.now())/60000)} min left`);return true}hlog("token-loaded",o?"saved token has expired":"no saved token")}catch{}return false}
+function authExpired(msg){hlog("token-expired",msg||"sign-in expired");accessToken=null;tokenExpiresAt=0;try{localStorage.removeItem(TOKEN_KEY)}catch{}showConnectScreen(msg||"Drive sign-in expired · tap a track or Reconnect")}
 function saveLibrary(){try{localStorage.setItem(libCacheKey(ROOT()),JSON.stringify({savedAt:Date.now(),tracks}))}catch(e){console.warn("Library cache not saved",e)}const l=curLib();if(l){l.count=tracks.length;saveLibraries()}}
 function loadLibrary(setQueue=true){try{const o=JSON.parse(localStorage.getItem(libCacheKey(ROOT()))||"null");if(o&&Array.isArray(o.tracks)&&o.tracks.length){tracks=o.tracks;if(setQueue)queue=[...tracks];const l=curLib();if(l&&l.count!==tracks.length){l.count=tracks.length;saveLibraries()}return true}}catch{}return false}
 function showConnected(){$("welcome").hidden=true;$("library").hidden=false;$("connectBtn").textContent="Connected";hideResumePrompt()}
-function requestToken(forceConsent){if(!tokenClient){alert("Google sign-in is still loading. Try again shortly.");return}if(authPending)return;authPending=true;tokenClient.requestAccessToken({prompt:forceConsent?"consent":""})}
+function requestToken(forceConsent){if(!tokenClient){alert("Google sign-in is still loading. Try again shortly.");return}if(authPending)return;hlog("token-request",`valid=${tokenValid()} left=${tokenExpiresAt?Math.round((tokenExpiresAt-Date.now())/60000)+" min":"no token"}`);authPending=true;tokenClient.requestAccessToken({prompt:forceConsent?"consent":""})}
 function withToken(fn){
   if(tokenValid()){
     if(tokenExpiresAt-Date.now()<10*60000&&navigator.userActivation?.isActive)requestToken(false);
@@ -283,10 +312,10 @@ function withToken(fn){
 function flushPending(err){const list=pendingActions;pendingActions=[];for(const a of list){if(err)a.reject(err);else Promise.resolve().then(a.fn).then(a.resolve,a.reject)}}
 function initAuth(){if(!window.google?.accounts?.oauth2){setTimeout(initAuth,250);return}
 tokenClient=google.accounts.oauth2.initTokenClient({client_id:CONFIG.CLIENT_ID,scope:"https://www.googleapis.com/auth/drive.readonly",
-callback:async r=>{authPending=false;if(r.error){if(scopeWaiter){scopeWaiter.rej(new Error("Drive edit permission wasn't granted"));scopeWaiter=null}if(tokenValid()){flushPending(new Error("Authorization cancelled"));return}authExpired("Drive connection needs attention. Please reconnect.");flushPending(new Error("Drive authorization failed"));return}
+callback:async r=>{authPending=false;hlog(r.error?"token-error":"token-ok",r.error?`${r.error} ${r.error_description||""}`:`new token, ${Math.round((Number(r.expires_in)||3600)/60)} min`);if(r.error){if(scopeWaiter){scopeWaiter.rej(new Error("Drive edit permission wasn't granted"));scopeWaiter=null}if(tokenValid()){flushPending(new Error("Authorization cancelled"));return}authExpired("Drive connection needs attention. Please reconnect.");flushPending(new Error("Drive authorization failed"));return}
 accessToken=r.access_token;tokenExpiresAt=Date.now()+(Number(r.expires_in)||3600)*1000;if(r.scope)grantedScopes=r.scope;saveToken();if(scopeWaiter){const w=scopeWaiter;scopeWaiter=null;hasWriteScope()?w.res():w.rej(new Error("Drive edit permission wasn't granted"))}try{localStorage.setItem(AUTH_KEY,"yes")}catch{}
 showConnected();setStatus(tracks.length?`Connected · ${tracks.length} tracks`:"Connected");flushPending();if(!tracks.length||needsRescan())await scanLibrary();else refreshOrder()},
-error_callback:e=>{authPending=false;if(scopeWaiter){scopeWaiter.rej(new Error("The permission window was closed"));scopeWaiter=null}console.warn("Google sign-in",e);flushPending(new Error("Sign-in window was closed or blocked"));if(!tokenValid())showConnectScreen(tracks.length?"Tap a track or Reconnect to resume":undefined)}});
+error_callback:e=>{authPending=false;hlog("token-popup-failed",e&&(e.type||e.message)||"");if(scopeWaiter){scopeWaiter.rej(new Error("The permission window was closed"));scopeWaiter=null}console.warn("Google sign-in",e);flushPending(new Error("Sign-in window was closed or blocked"));if(!tokenValid())showConnectScreen(tracks.length?"Tap a track or Reconnect to resume":undefined)}});
 loadOrderCache();const hadLib=loadLibrary();if(hadLib){tracks=allSongsSort(tracks);queue=[...tracks];formatCounts();renderTracks()}
 if(loadToken()){showConnected();setStatus(hadLib?`Connected · ${tracks.length} tracks`:"Connected");if(!hadLib||needsRescan())scanLibrary();else refreshOrder();return}
 let authorized=false;try{authorized=localStorage.getItem(AUTH_KEY)==="yes"}catch{}
@@ -311,10 +340,12 @@ function encodeWav(buf){
 async function levelBlob(id,blob){
   if(!levelEnabled)return blob;
   if(leveledCache.has(id))return leveledCache.get(id);
+  const L0=Date.now();hlog("level-start",`${id.slice(0,8)} ${(blob.size/1048576).toFixed(1)} MB in`);
   const OCtx=window.OfflineAudioContext||window.webkitOfflineAudioContext;
   if(!OCtx)return blob;
   try{
     const decoded=await new OCtx(1,1,44100).decodeAudioData(await blob.arrayBuffer());
+    const Ld=Date.now()-L0;
     if(decoded.duration>900)return blob;
     const chd=decoded.getChannelData(0);let sumSq=0,count=0;const step=Math.max(1,Math.floor(chd.length/120000));
     for(let i=0;i<chd.length;i+=step){const x=chd[i];if(Math.abs(x)>0.005){sumSq+=x*x;count++}}
@@ -333,10 +364,10 @@ async function levelBlob(id,blob){
       src.connect(g);g.connect(comp);comp.connect(off.destination);src.start();
       out=encodeWav(await off.startRendering());
     }
-    leveledCache.set(id,out);
+    leveledCache.set(id,out);hlog("level-done",`${id.slice(0,8)} decode ${Ld} ms, total ${Date.now()-L0} ms, out ${(out.size/1048576).toFixed(1)} MB, gain ${gain.toFixed(2)}`);
     while(leveledCache.size>2)leveledCache.delete(leveledCache.keys().next().value);
     return out;
-  }catch(e){console.warn("Level skipped",e);return blob}
+  }catch(e){console.warn("Level skipped",e);hlog("level-failed",`${id.slice(0,8)} ${e&&e.message} after ${Date.now()-L0} ms`);return blob}
 }
 // A media element that has been routed through Web Audio can't be un-routed; swap in a fresh one.
 function initAudioToggles(){
@@ -370,14 +401,17 @@ async function reapplyLevel(){
   setStatus(levelEnabled?(g&&Math.abs(g-1)>=.08?`Level on · ${g>1?"+":""}${(20*Math.log10(g)).toFixed(1)} dB on this song`:"Level on · this song is already at the target level"):"Level off");
 }
 async function prefetchNextTrack(){
-  if(queue.length<2||currentIndex<0||!tokenValid())return;
+  if(queue.length<2||currentIndex<0)return;
+  if(!tokenValid()){hlog("prefetch-skip","sign-in expired","skip");return}
   const nextTrack=queue[(currentIndex+1)%queue.length];
   if(!nextTrack||prefetchedNextId===nextTrack.id)return;
+  const P0=Date.now();
   try{
     prefetchedNextId=nextTrack.id;
+    hlog("prefetch-start",`${nextTrack.id.slice(0,8)} with ${Math.round(((audio.duration||0)-audio.currentTime))} s left in current song`,"pf");
     const blob=await downloadFile(nextTrack.id);
-    if(prefetchedNextId===nextTrack.id){prefetchedBlob=blob;levelBlob(nextTrack.id,blob).catch(()=>{})}
-  }catch{prefetchedNextId=null;prefetchedBlob=null}
+    if(prefetchedNextId===nextTrack.id){prefetchedBlob=blob;hlog("prefetch-done",`${nextTrack.id.slice(0,8)} ${(blob.size/1048576).toFixed(1)} MB in ${Date.now()-P0} ms`);levelBlob(nextTrack.id,blob).catch(()=>{})}
+  }catch(e){hlog("prefetch-fail",`${nextTrack.id.slice(0,8)} ${e&&e.message}`,"pff");prefetchedNextId=null;prefetchedBlob=null}
 }
 
 async function driveList(parentId){let pageToken=null,all=[];do{const p=new URLSearchParams({q:`'${parentId}' in parents and trashed=false`,pageSize:"1000",orderBy:"name",fields:"nextPageToken,files(id,name,mimeType,size,modifiedTime,parents,shortcutDetails)"});if(pageToken)p.set("pageToken",pageToken);const res=await fetch(`https://www.googleapis.com/drive/v3/files?${p}`,{headers:{Authorization:`Bearer ${accessToken}`}});if(res.status===401){authExpired();throw new Error("Drive authorization expired ("+res.status+"). Please reconnect.")}if(!res.ok)throw new Error(`Drive API ${res.status}: ${await res.text()}`);const data=await res.json();all.push(...(data.files||[]));pageToken=data.nextPageToken}while(pageToken);return all}
@@ -548,6 +582,9 @@ window.HiFi45App=window.Drive45App=window.MyMusicApp=Object.freeze({
   showRecentSongs,
   togglePlayerExpand,
   toggleLeveling,
+  getLog:logText,
+  showLog,
+  clearLog,
   getNavigationState:()=>({
     browseButton:!!$("folderToggle"),
     expandedBrowseButton:!!$("expandedBrowseBtn"),
@@ -563,13 +600,22 @@ window.HiFi45App=window.Drive45App=window.MyMusicApp=Object.freeze({
     currentFolderId
   })
 });
-async function downloadFile(id){const r=await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`,{headers:{Authorization:`Bearer ${accessToken}`}});if(r.status===401){authExpired();throw new Error("Drive authorization expired. Please reconnect.")}if(!r.ok)throw new Error(`Couldn't download file (${r.status})`);return r.blob()}
+async function downloadFile(id,kind="song"){
+  const t0=Date.now(),sid=`${kind} ${String(id).slice(0,8)}`;hlog("dl-start",sid,"dls"+kind);
+  let r;try{r=await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`,{headers:{Authorization:`Bearer ${accessToken}`}})}
+  catch(e){hlog("dl-fail",`${sid} network error: ${e&&e.message} after ${Date.now()-t0} ms`,"dlf"+kind);throw e}
+  if(r.status===401){hlog("dl-fail",`${sid} status 401 (sign-in expired)`,"dlf"+kind);authExpired();throw new Error("Drive authorization expired. Please reconnect.")}
+  if(!r.ok){let why="";try{why=((await r.text()).match(/"reason":\s*"([^"]+)"/)||[])[1]||""}catch{}hlog("dl-fail",`${sid} status ${r.status} ${why} after ${Date.now()-t0} ms`,"dlf"+kind);throw new Error(`Couldn't download file (${r.status})`)}
+  try{const b=await r.blob();hlog("dl-ok",`${sid} ${(b.size/1048576).toFixed(1)} MB in ${Date.now()-t0} ms`);return b}
+  catch(e){hlog("dl-fail",`${sid} dropped while downloading: ${e&&e.message} after ${Date.now()-t0} ms`,"dlf"+kind);throw e}
+}
 // Cover art: keep the current picture until the next one is ready (no flash of the default art between songs).
 let currentArtId=null,artJob=0;
 function showNoArt(){if(currentArtUrl){URL.revokeObjectURL(currentArtUrl);currentArtUrl=null}currentArtId=null;$("artwork").hidden=true;$("artPlaceholder").hidden=false}
-async function loadArtwork(track){const job=++artJob;const files=await driveList(track.parentId);if(job!==artJob)return;const art=files.find(f=>/\.(jpe?g|png|webp)$/i.test(f.name));if(!art){showNoArt();return}if(art.id===currentArtId&&currentArtUrl)return;const blob=await downloadFile(art.id);if(job!==artJob)return;const old=currentArtUrl;currentArtUrl=URL.createObjectURL(blob);currentArtId=art.id;$("artwork").src=currentArtUrl;$("artwork").hidden=false;$("artPlaceholder").hidden=true;if(old)setTimeout(()=>URL.revokeObjectURL(old),1500)}
+async function loadArtwork(track){const job=++artJob;const files=await driveList(track.parentId);if(job!==artJob)return;const art=files.find(f=>/\.(jpe?g|png|webp)$/i.test(f.name));if(!art){showNoArt();return}if(art.id===currentArtId&&currentArtUrl)return;const blob=await downloadFile(art.id,"art");if(job!==artJob)return;const old=currentArtUrl;currentArtUrl=URL.createObjectURL(blob);currentArtId=art.id;$("artwork").src=currentArtUrl;$("artwork").hidden=false;$("artPlaceholder").hidden=true;if(old)setTimeout(()=>URL.revokeObjectURL(old),1500)}
 function playTrackById(id,fromAutoplay=false,opts={}){
   if(fromAutoplay&&!tokenValid()){
+    hlog("autoplay-blocked","next song needs a new sign-in (token expired) — playback stops here");
     const idx=queue.findIndex(t=>t.id===id);
     if(idx>=0){currentIndex=idx;const t=queue[idx],i=trackInfo(t);$("trackTitle").textContent=i.title;$("trackSubtitle").textContent=i.subtitle;$("queueLabel").textContent=i.artist.toUpperCase();renderTracks()}
     setPlayIcon("play");
@@ -578,16 +624,19 @@ function playTrackById(id,fromAutoplay=false,opts={}){
     return Promise.resolve();
   }
   hideResumePrompt();
-  return withToken(()=>_playTrackById(id,opts)).catch(e=>{console.warn(e);setPlayIcon("play");setStatus("Drive sign-in needed · tap to continue");showResumePrompt(id)});
+  return withToken(()=>_playTrackById(id,opts)).catch(e=>{console.warn(e);hlog("play-signin-failed",e&&e.message);setPlayIcon("play");setStatus("Drive sign-in needed · tap to continue");showResumePrompt(id)});
 }
-async function _playTrackById(id,opts={}){const idx=queue.findIndex(t=>t.id===id);if(idx<0)return;currentIndex=idx;const t=queue[idx],i=trackInfo(t);$("trackTitle").textContent=i.title;$("trackSubtitle").textContent=i.subtitle;$("queueLabel").textContent=i.artist.toUpperCase();fitTitle();setPlayIcon("loading");setStatus("Loading track…");try{const blobPromise=prefetchedNextId===t.id&&prefetchedBlob?Promise.resolve(prefetchedBlob):downloadFile(t.id);prefetchedNextId=null;prefetchedBlob=null;let [blob]=await Promise.all([blobPromise,loadArtwork(t).catch(err=>{console.warn("Artwork unavailable",err)})]);currentRaw={id:t.id,blob};blob=await levelBlob(t.id,blob);if(currentObjectUrl)URL.revokeObjectURL(currentObjectUrl);currentObjectUrl=URL.createObjectURL(blob);audio.src=currentObjectUrl;audio.load();await audio.play();hideResumePrompt();if(!opts.noHistory)pushHistory(t.id);setStatus("Playing");renderTracks();updateMediaSession(t,i)}catch(e){console.error(e);setPlayIcon("play");if(!tokenValid()){setStatus("Drive sign-in expired · tap to continue");showResumePrompt(id)}else{setStatus("Playback unavailable");alert(`This track couldn't be loaded.\n\n${e.message}`)}}}
+async function _playTrackById(id,opts={}){const idx=queue.findIndex(t=>t.id===id);if(idx<0)return;currentIndex=idx;const t=queue[idx],i=trackInfo(t);$("trackTitle").textContent=i.title;$("trackSubtitle").textContent=i.subtitle;$("queueLabel").textContent=i.artist.toUpperCase();fitTitle();setPlayIcon("loading");setStatus("Loading track…");const T0=Date.now();try{const pf=prefetchedNextId===t.id?(prefetchedBlob?"ready":"still downloading"):"none";hlog("track-load",`${i.title} | next-song prefetch: ${pf}`);const blobPromise=prefetchedNextId===t.id&&prefetchedBlob?Promise.resolve(prefetchedBlob):downloadFile(t.id);prefetchedNextId=null;prefetchedBlob=null;let [blob]=await Promise.all([blobPromise,loadArtwork(t).catch(err=>{console.warn("Artwork unavailable",err)})]);const T1=Date.now();currentRaw={id:t.id,blob};blob=await levelBlob(t.id,blob);const T2=Date.now();if(currentObjectUrl)URL.revokeObjectURL(currentObjectUrl);currentObjectUrl=URL.createObjectURL(blob);audio.src=currentObjectUrl;audio.load();await audio.play();hlog("track-play",`${i.title} | download ${T1-T0} ms, level ${T2-T1} ms, total ${Date.now()-T0} ms`);hideResumePrompt();if(!opts.noHistory)pushHistory(t.id);setStatus("Playing");renderTracks();updateMediaSession(t,i)}catch(e){console.error(e);hlog("track-fail",`${i.title} | ${e&&e.message} after ${Date.now()-T0} ms`);setPlayIcon("play");if(!tokenValid()){setStatus("Drive sign-in expired · tap to continue");showResumePrompt(id)}else{setStatus("Playback unavailable");alert(`This track couldn't be loaded.\n\n${e.message}`)}}}
 function updateMediaSession(t,i){if(!("mediaSession"in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:i.title,artist:i.artist,album:i.release,artwork:currentArtUrl?[{src:currentArtUrl,sizes:"512x512"}]:[]});const h={play:()=>audio.play(),pause:()=>audio.pause(),previoustrack:playPrevious,nexttrack:()=>playNext(false),seekbackward:()=>audio.currentTime=Math.max(0,audio.currentTime-15),seekforward:()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+15)};for(const[a,fn]of Object.entries(h)){try{navigator.mediaSession.setActionHandler(a,fn)}catch{}}}
 function playNext(fromAutoplay=false){if(queue.length)playTrackById(queue[(currentIndex+1)%queue.length].id,fromAutoplay)}function playPrevious(){if(!queue.length)return;if(audio.currentTime>3){audio.currentTime=0;return}playTrackById(queue[(currentIndex-1+queue.length)%queue.length].id,false)}
 $("playBtn").onclick=()=>{if(pendingResumeTrackId){playTrackById(pendingResumeTrackId,false);return}if(!audio.src){if(queue.length)playTrackById(queue[0].id,false)}else if(audio.paused){audio.play()}else audio.pause()};$("nextBtn").onclick=()=>playNext(false);$("backBtn").onclick=playPrevious;$("rewindBtn").onclick=()=>audio.currentTime=Math.max(0,audio.currentTime-15);$("forwardBtn").onclick=()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+15);
 function bindAudioEvents(el){
-  el.onplay=()=>{if(el!==audio)return;setPlayIcon("pause");if(navigator.mediaSession)navigator.mediaSession.playbackState="playing"};
-  el.onpause=()=>{if(el!==audio)return;setPlayIcon("play");if(navigator.mediaSession)navigator.mediaSession.playbackState="paused"};
-  el.onended=()=>{if(el!==audio)return;playNext(true)};
+  el.onplay=()=>{if(el!==audio)return;hlog("audio-play",formatTime(audio.currentTime),"aplay");setPlayIcon("pause");if(navigator.mediaSession)navigator.mediaSession.playbackState="playing"};
+  el.onpause=()=>{if(el!==audio)return;hlog("audio-pause",formatTime(audio.currentTime),"apause");setPlayIcon("play");if(navigator.mediaSession)navigator.mediaSession.playbackState="paused"};
+  el.onended=()=>{if(el!==audio)return;hlog("track-end",`${formatTime(audio.currentTime)} | next song ready: ${prefetchedBlob&&prefetchedNextId===queue[(currentIndex+1)%Math.max(1,queue.length)]?.id?"yes":"no"}`);playNext(true)};
+  el.onerror=()=>{if(el!==audio)return;hlog("audio-error",`code ${el.error?.code} ${el.error?.message||""}`)};
+  el.onstalled=()=>{if(el!==audio)return;hlog("audio-stalled",formatTime(audio.currentTime),"stall")};
+  el.onwaiting=()=>{if(el!==audio)return;hlog("audio-waiting",formatTime(audio.currentTime),"wait")};
   el.ontimeupdate=()=>{
     if(el!==audio||!audio.duration)return;
     $("seek").value=String(Math.round(audio.currentTime/audio.duration*1000));

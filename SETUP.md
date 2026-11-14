@@ -109,3 +109,7 @@ Replace all files. Then remove the Hi-Fi45 icon from your iPhone Home Screen and
 
 ### Alpha 1.9.26 — custom order
 Replace all files. The first time you reorder and tap Done, Google asks you to allow Hi-Fi45 to edit your Drive files (needed to save hifi45-order.json). Because the app is in Testing mode, Google may show its "unverified app" notice again; continue. The order file appears in the top folder of each library you reorder.
+
+
+### Alpha 1.9.27 — event log
+Replace all app files (index.html, app.js, styles.css, sw.js; the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.27. To read the log, tap the version label 5 times, then Share or Copy. Before a car test: open the log, tap Clear, then drive. Afterwards open the log and Share it.

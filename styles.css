@@ -1150,3 +1150,10 @@ body.in-pip{align-items:safe center;justify-content:safe center}
 .folder-track .track-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
 .folder-list .folder-track .ft-note{flex:none}
 .folder-list .folder-track .track-title{flex:1;min-width:0;text-align:left}
+
+/* ---- 1.9.27: hidden event log panel (tap the version label 5 times) ---- */
+#hifi45LogPanel{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;background:#000;color:#ddd;padding:env(safe-area-inset-top) 10px env(safe-area-inset-bottom)}
+#hifi45LogPanel .logbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;flex:none}
+#hifi45LogPanel .logbtns{display:flex;gap:6px}
+#hifi45LogPanel button{font:inherit;font-size:14px;color:#fff;background:#2a2a2a;border:1px solid #555;border-radius:8px;padding:7px 12px}
+#hifi45LogPanel textarea{flex:1;min-height:0;width:100%;box-sizing:border-box;background:#0b0b0b;color:#cfcfcf;border:1px solid #333;border-radius:8px;padding:8px;font:11px/1.35 ui-monospace,Menlo,monospace;resize:none;margin-bottom:10px}

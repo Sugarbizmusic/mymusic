@@ -1,3 +1,10 @@
+## Alpha 1.9.27
+- Event log for tracking down the "song didn't load" and "next song didn't start in the car" problems. Nothing about playback, layout or sign-in changed.
+- Open it by tapping the version label (ALPHA 1.9.27, bottom of the player) 5 times quickly. Buttons: Share (sends the log by Messages, Mail, etc.), Copy, Clear, Close. Also available in the browser console as HiFi45App.getLog().
+- It keeps the last 400 events on the phone (survives iOS reloading the page): app start, screen lock / unlock (V = page visible, H = hidden), song start and end, whether the next song was ready, every download (size, time, error codes; Drive 403 reasons), prefetch start / finish / fail, Level timings, sign-in requests, renewals and expiry, and audio errors or stalls.
+- Repeated identical failures are collapsed into one line with a count.
+- Bumped service-worker cache to mymusic-shell-v1-9-27.
+
 ## Alpha 1.9.26
 - Custom order: in Browse folders, tap Edit order, drag the ≡ handles to reorder folders and songs, then tap Done. "Reset to A–Z" clears the order for that folder.
 - The order is saved in hifi45-order.json in the library's top folder (one file per library), so everyone who opens the library gets the same order. Folders and songs that aren't in the order (e.g. newly added) go at the end, A–Z. Deleting the file puts everything back to A–Z.
