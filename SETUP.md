@@ -113,3 +113,7 @@ Replace all files. The first time you reorder and tap Done, Google asks you to a
 
 ### Alpha 1.9.27 — event log
 Replace all app files (index.html, app.js, styles.css, sw.js; the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.27. To read the log, tap the version label 5 times, then Share or Copy. Before a car test: open the log, tap Clear, then drive. Afterwards open the log and Share it.
+
+
+### Alpha 1.9.28 — ⋯ menu
+Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.28. The ⋯ button (top right) opens Libraries, Rescan this library and Event log. Before a car test: ⋯ → Event log → Clear → Close, then drive. Afterwards ⋯ → Event log → Share.

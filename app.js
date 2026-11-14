@@ -1,9 +1,9 @@
-// Hi-Fi45 Alpha 1.9.27 — event log for finding the song-loading and car-playback problems (tap the version label 5 times to open it; nothing else changed).
+// Hi-Fi45 Alpha 1.9.28 — ⋯ menu in the header (Libraries, Rescan, Event log); Connect/Reconnect stays on the header.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 
-// ---- Event log (1.9.27): last 400 events kept in localStorage. Open it by tapping the version label 5 times, or HiFi45App.getLog() ----
-const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.27";let logBuf=[];
+// ---- Event log (1.9.27): last 400 events kept in localStorage. Open it from the ⋯ menu, or HiFi45App.getLog() ----
+const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.28";let logBuf=[];
 try{logBuf=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");if(!Array.isArray(logBuf))logBuf=[]}catch{logBuf=[]}
 // entry: [time, tag, message, V/H (page visible/hidden), repeat count, last time, collapse key]
 function hlog(tag,msg="",key){try{const now=Date.now(),vis=document.visibilityState==="hidden"?"H":"V";msg=String(msg).slice(0,220);
@@ -25,7 +25,18 @@ function showLog(){
     else if(a==="share"){try{if(navigator.share)await navigator.share({title:"Hi-Fi45 log",text:ta.value});else{await navigator.clipboard.writeText(ta.value);e.target.textContent="Copied"}}catch{}}};
   document.body.appendChild(ov);ta.scrollTop=ta.scrollHeight;
 }
-{let taps=[];document.addEventListener("click",e=>{if(!e.target.closest?.(".version"))return;const n=Date.now();taps=taps.filter(t=>n-t<3000);taps.push(n);if(taps.length>=5){taps=[];showLog()}})}
+// ⋯ menu (1.9.28): Libraries, Rescan and the event log live here; Connect/Reconnect stays in the header.
+{const btn=document.getElementById("menuBtn"),menu=document.getElementById("appMenu");
+  if(btn&&menu){
+    const close=()=>{menu.hidden=true;btn.setAttribute("aria-expanded","false")};
+    const open=()=>{const lib=!document.getElementById("library").hidden;["librariesBtn","refreshBtn","menuSep"].forEach(id=>{document.getElementById(id).hidden=!lib});
+      const r=btn.getBoundingClientRect();menu.style.top=Math.round(r.bottom+6)+"px";menu.style.right=Math.max(8,Math.round(innerWidth-r.right))+"px";menu.hidden=false;btn.setAttribute("aria-expanded","true")};
+    btn.addEventListener("click",e=>{e.stopPropagation();menu.hidden?open():close()});
+    menu.addEventListener("click",e=>{if(e.target.closest("button"))close()});
+    document.addEventListener("click",e=>{if(!menu.hidden&&!e.target.closest("#appMenu"))close()});
+    document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!menu.hidden)close()});
+    document.getElementById("menuLogBtn").addEventListener("click",showLog);
+  }}
 {const nav=(performance.getEntriesByType?.("navigation")||[])[0];hlog("boot",`v${APP_VERSION} load=${nav?.type||"?"} standalone=${navigator.standalone===true} online=${navigator.onLine}`);
   document.addEventListener("visibilitychange",()=>hlog("visibility",document.visibilityState));
   addEventListener("pagehide",e=>hlog("pagehide",`persisted=${e.persisted}`));addEventListener("pageshow",e=>hlog("pageshow",`persisted=${e.persisted}`));

@@ -1,3 +1,9 @@
+## Alpha 1.9.28
+- New ⋯ menu button in the top right of the header, next to Connect / Reconnect (which stays where it was).
+- The menu holds Libraries and Rescan this library (moved from the Your library heading; they work exactly as before and only show once you're connected) and Event log (testing).
+- The 5-taps-on-the-version-label way of opening the event log is gone (iPhone ignored it); use the menu instead. The log itself is unchanged from 1.9.27.
+- Bumped service-worker cache to mymusic-shell-v1-9-28.
+
 ## Alpha 1.9.27
 - Event log for tracking down the "song didn't load" and "next song didn't start in the car" problems. Nothing about playback, layout or sign-in changed.
 - Open it by tapping the version label (ALPHA 1.9.27, bottom of the player) 5 times quickly. Buttons: Share (sends the log by Messages, Mail, etc.), Copy, Clear, Close. Also available in the browser console as HiFi45App.getLog().

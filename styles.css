@@ -1157,3 +1157,15 @@ body.in-pip{align-items:safe center;justify-content:safe center}
 #hifi45LogPanel .logbtns{display:flex;gap:6px}
 #hifi45LogPanel button{font:inherit;font-size:14px;color:#fff;background:#2a2a2a;border:1px solid #555;border-radius:8px;padding:7px 12px}
 #hifi45LogPanel textarea{flex:1;min-height:0;width:100%;box-sizing:border-box;background:#0b0b0b;color:#cfcfcf;border:1px solid #333;border-radius:8px;padding:8px;font:11px/1.35 ui-monospace,Menlo,monospace;resize:none;margin-bottom:10px}
+
+/* ---- 1.9.28: ⋯ menu in the header ---- */
+.header-actions{display:flex;align-items:center;gap:10px;flex:none}
+.menu-btn{width:44px;height:44px;flex:none}
+.menu-btn svg{width:20px;height:20px}
+.app-menu{position:fixed;z-index:99990;min-width:220px;padding:6px;border-radius:16px;background:#1d0d1f;border:1.5px solid rgba(243,224,181,.35);box-shadow:0 14px 34px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:2px}
+.app-menu[hidden],.app-menu [hidden]{display:none!important}
+.app-menu button{width:100%;text-align:left;background:transparent;border:0;box-shadow:none;color:var(--cream);font:inherit;font-size:15px;font-weight:700;padding:12px 14px;border-radius:10px;min-height:44px}
+.app-menu button:hover,.app-menu button:active{background:#2f1a33;transform:none;filter:none}
+.app-menu button:disabled{opacity:.45}
+.app-menu small{color:var(--muted);font-weight:500}
+.menu-sep{height:1px;background:rgba(243,224,181,.16);margin:4px 8px}
