@@ -1,9 +1,9 @@
-// Hi-Fi45 Alpha 1.9.28 — ⋯ menu in the header (Libraries, Rescan, Event log); Connect/Reconnect stays on the header.
+// Hi-Fi45 Alpha 1.9.31 — car/lock-screen button logging, seek buttons removed from the lock screen/car (next/previous show instead), "tap play" instead of an error alert when iPhone refuses to autostart.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 
 // ---- Event log (1.9.27): last 400 events kept in localStorage. Open it from the ⋯ menu, or HiFi45App.getLog() ----
-const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.28";let logBuf=[];
+const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.31";let logBuf=[];
 try{logBuf=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");if(!Array.isArray(logBuf))logBuf=[]}catch{logBuf=[]}
 // entry: [time, tag, message, V/H (page visible/hidden), repeat count, last time, collapse key]
 function hlog(tag,msg="",key){try{const now=Date.now(),vis=document.visibilityState==="hidden"?"H":"V";msg=String(msg).slice(0,220);
@@ -386,8 +386,18 @@ function initAudioToggles(){
   try{localStorage.removeItem("mymusic_xfade_v1")}catch{}
   updateToggleButtons();
 }
+// Level readout under the button (1.9.30): the dB change applied to the song that's playing, or OFF.
+let levelBusyId=null;
+function fmtDb(g){const a=Math.abs(g-1)>=0.08?g:1,d=20*Math.log10(a);return Math.abs(d)<0.05?"0.0 dB":`${d>0?"+":"−"}${Math.abs(d).toFixed(1)} dB`}
+function updateLevelReadout(){const el=$("levelDb");if(!el)return;const cur=queue[currentIndex];let txt,off=false;
+  if(!levelEnabled){txt="OFF";off=true}
+  else if(!cur)txt="ON";
+  else if(levelBusyId===cur.id)txt="…";
+  else{const g=gainCache.get(cur.id);txt=g===undefined?"—":fmtDb(g)}
+  el.textContent=txt;el.classList.toggle("off",off)}
 function updateToggleButtons(){
   const lb=$("levelToggleBtn");if(lb){lb.setAttribute("aria-pressed",String(levelEnabled));lb.classList.toggle("lit",levelEnabled);lb.classList.toggle("latched",levelEnabled);lb.title=levelEnabled?"Level: on (matches loudness)":"Level: off"}
+  updateLevelReadout();
 }
 function toggleLeveling(){
   levelEnabled=!levelEnabled;
@@ -400,10 +410,12 @@ function toggleLeveling(){
 let currentRaw=null,levelJob=0;
 async function reapplyLevel(){
   const job=++levelJob,raw=currentRaw,cur=queue[currentIndex];
-  if(!raw||!cur||raw.id!==cur.id||!audio.src){setStatus(levelEnabled?"Level on":"Level off");return}
+  if(!raw||!cur||raw.id!==cur.id||!audio.src){setStatus(levelEnabled?"Level on":"Level off");updateLevelReadout();return}
   setStatus(levelEnabled?"Level on · adjusting this song…":"Level off · restoring this song…");
+  if(levelEnabled){levelBusyId=raw.id;updateLevelReadout()}
   const blob=levelEnabled?await levelBlob(raw.id,raw.blob):raw.blob;
   if(job!==levelJob||queue[currentIndex]?.id!==raw.id)return;
+  if(levelBusyId===raw.id)levelBusyId=null;updateLevelReadout();
   const t=audio.currentTime,wasPlaying=!audio.paused,old=currentObjectUrl;
   currentObjectUrl=URL.createObjectURL(blob);audio.src=currentObjectUrl;
   audio.addEventListener("loadedmetadata",()=>{try{audio.currentTime=t}catch{}if(wasPlaying)audio.play().catch(()=>{})},{once:true});
@@ -637,8 +649,14 @@ function playTrackById(id,fromAutoplay=false,opts={}){
   hideResumePrompt();
   return withToken(()=>_playTrackById(id,opts)).catch(e=>{console.warn(e);hlog("play-signin-failed",e&&e.message);setPlayIcon("play");setStatus("Drive sign-in needed · tap to continue");showResumePrompt(id)});
 }
-async function _playTrackById(id,opts={}){const idx=queue.findIndex(t=>t.id===id);if(idx<0)return;currentIndex=idx;const t=queue[idx],i=trackInfo(t);$("trackTitle").textContent=i.title;$("trackSubtitle").textContent=i.subtitle;$("queueLabel").textContent=i.artist.toUpperCase();fitTitle();setPlayIcon("loading");setStatus("Loading track…");const T0=Date.now();try{const pf=prefetchedNextId===t.id?(prefetchedBlob?"ready":"still downloading"):"none";hlog("track-load",`${i.title} | next-song prefetch: ${pf}`);const blobPromise=prefetchedNextId===t.id&&prefetchedBlob?Promise.resolve(prefetchedBlob):downloadFile(t.id);prefetchedNextId=null;prefetchedBlob=null;let [blob]=await Promise.all([blobPromise,loadArtwork(t).catch(err=>{console.warn("Artwork unavailable",err)})]);const T1=Date.now();currentRaw={id:t.id,blob};blob=await levelBlob(t.id,blob);const T2=Date.now();if(currentObjectUrl)URL.revokeObjectURL(currentObjectUrl);currentObjectUrl=URL.createObjectURL(blob);audio.src=currentObjectUrl;audio.load();await audio.play();hlog("track-play",`${i.title} | download ${T1-T0} ms, level ${T2-T1} ms, total ${Date.now()-T0} ms`);hideResumePrompt();if(!opts.noHistory)pushHistory(t.id);setStatus("Playing");renderTracks();updateMediaSession(t,i)}catch(e){console.error(e);hlog("track-fail",`${i.title} | ${e&&e.message} after ${Date.now()-T0} ms`);setPlayIcon("play");if(!tokenValid()){setStatus("Drive sign-in expired · tap to continue");showResumePrompt(id)}else{setStatus("Playback unavailable");alert(`This track couldn't be loaded.\n\n${e.message}`)}}}
-function updateMediaSession(t,i){if(!("mediaSession"in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:i.title,artist:i.artist,album:i.release,artwork:currentArtUrl?[{src:currentArtUrl,sizes:"512x512"}]:[]});const h={play:()=>audio.play(),pause:()=>audio.pause(),previoustrack:playPrevious,nexttrack:()=>playNext(false),seekbackward:()=>audio.currentTime=Math.max(0,audio.currentTime-15),seekforward:()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+15)};for(const[a,fn]of Object.entries(h)){try{navigator.mediaSession.setActionHandler(a,fn)}catch{}}}
+async function _playTrackById(id,opts={}){const idx=queue.findIndex(t=>t.id===id);if(idx<0)return;currentIndex=idx;const t=queue[idx],i=trackInfo(t);$("trackTitle").textContent=i.title;$("trackSubtitle").textContent=i.subtitle;$("queueLabel").textContent=i.artist.toUpperCase();fitTitle();setPlayIcon("loading");setStatus("Loading track…");const T0=Date.now();if(levelEnabled)levelBusyId=t.id;updateLevelReadout();try{const pf=prefetchedNextId===t.id?(prefetchedBlob?"ready":"still downloading"):"none";hlog("track-load",`${i.title} | next-song prefetch: ${pf}`);const blobPromise=prefetchedNextId===t.id&&prefetchedBlob?Promise.resolve(prefetchedBlob):downloadFile(t.id);prefetchedNextId=null;prefetchedBlob=null;let [blob]=await Promise.all([blobPromise,loadArtwork(t).catch(err=>{console.warn("Artwork unavailable",err)})]);const T1=Date.now();currentRaw={id:t.id,blob};blob=await levelBlob(t.id,blob);const T2=Date.now();if(levelBusyId===t.id)levelBusyId=null;updateLevelReadout();if(currentObjectUrl)URL.revokeObjectURL(currentObjectUrl);currentObjectUrl=URL.createObjectURL(blob);audio.src=currentObjectUrl;audio.load();await audio.play();hlog("track-play",`${i.title} | download ${T1-T0} ms, level ${T2-T1} ms, total ${Date.now()-T0} ms`);hideResumePrompt();if(!opts.noHistory)pushHistory(t.id);setStatus("Playing");renderTracks();updateMediaSession(t,i)}catch(e){console.error(e);if(levelBusyId===t.id)levelBusyId=null;updateLevelReadout();
+  if(e&&e.name==="NotAllowedError"){hlog("play-needs-tap",`${i.title} | iPhone refused to autostart after ${Date.now()-T0} ms; song is loaded`);setPlayIcon("play");setStatus("Ready · tap play to start");hideResumePrompt();if(!opts.noHistory)pushHistory(t.id);renderTracks();updateMediaSession(t,i);return}
+  hlog("track-fail",`${i.title} | ${e&&e.message} after ${Date.now()-T0} ms`);setPlayIcon("play");if(!tokenValid()){setStatus("Drive sign-in expired · tap to continue");showResumePrompt(id)}else{setStatus("Playback unavailable");alert(`This track couldn't be loaded.\n\n${e.message}`)}}}
+function updateMediaSession(t,i){if(!("mediaSession"in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:i.title,artist:i.artist,album:i.release,artwork:currentArtUrl?[{src:currentArtUrl,sizes:"512x512"}]:[]});const act=(name,fn)=>()=>{hlog("media-button",`${name} | was ${audio.paused?"paused":"playing"} at ${formatTime(audio.currentTime)}`);return fn()};
+  const h={play:act("play",()=>audio.play().catch(e=>hlog("media-button-fail",`play ${e&&e.name}`))),pause:act("pause",()=>audio.pause()),previoustrack:act("previous",playPrevious),nexttrack:act("next",()=>playNext(false))};
+  for(const[a,fn]of Object.entries(h)){try{navigator.mediaSession.setActionHandler(a,fn)}catch{}}
+  for(const a of ["seekbackward","seekforward"]){try{navigator.mediaSession.setActionHandler(a,null)}catch{}}
+  hlog("media-session","buttons: play, pause, previous, next (±15 s seek removed)","ms")}
 function playNext(fromAutoplay=false){if(queue.length)playTrackById(queue[(currentIndex+1)%queue.length].id,fromAutoplay)}function playPrevious(){if(!queue.length)return;if(audio.currentTime>3){audio.currentTime=0;return}playTrackById(queue[(currentIndex-1+queue.length)%queue.length].id,false)}
 $("playBtn").onclick=()=>{if(pendingResumeTrackId){playTrackById(pendingResumeTrackId,false);return}if(!audio.src){if(queue.length)playTrackById(queue[0].id,false)}else if(audio.paused){audio.play()}else audio.pause()};$("nextBtn").onclick=()=>playNext(false);$("backBtn").onclick=playPrevious;$("rewindBtn").onclick=()=>audio.currentTime=Math.max(0,audio.currentTime-15);$("forwardBtn").onclick=()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+15);
 function bindAudioEvents(el){

@@ -117,3 +117,15 @@ Replace all app files (index.html, app.js, styles.css, sw.js; the rest are uncha
 
 ### Alpha 1.9.28 — ⋯ menu
 Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.28. The ⋯ button (top right) opens Libraries, Rescan this library and Event log. Before a car test: ⋯ → Event log → Clear → Close, then drive. Afterwards ⋯ → Event log → Share.
+
+
+### Alpha 1.9.29 — Connect button position
+Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.29. Connect / Reconnect Drive is now beside "Your library".
+
+
+### Alpha 1.9.30 — Level readout
+Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.30. Under the LEVEL button you should see OFF, or the dB change for the current song when Level is on.
+
+
+### Alpha 1.9.31 — button logging, next/previous on the lock screen, no error alert on autostart refusal
+Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.31. Before a car test: ⋯ → Event log → Clear → Close. Afterwards share the log; "media-button" lines show what the car or lock screen sent.

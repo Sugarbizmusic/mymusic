@@ -1169,3 +1169,11 @@ body.in-pip{align-items:safe center;justify-content:safe center}
 .app-menu button:disabled{opacity:.45}
 .app-menu small{color:var(--muted);font-weight:500}
 .menu-sep{height:1px;background:rgba(243,224,181,.16);margin:4px 8px}
+
+/* ---- 1.9.29: Connect / Reconnect sits beside "Your library"; header is just logo + menu ---- */
+.heading-actions #connectBtn{white-space:nowrap}
+@media (max-width:420px){.heading-actions #connectBtn{padding:8px 14px;font-size:14px}}
+
+/* ---- 1.9.30: Level readout (dB) under the LEVEL label ---- */
+.level-unit .deck-label.level-db{top:calc(100% + 19px);font-size:10px;line-height:12px;letter-spacing:.6px;font-weight:800;color:var(--gold);white-space:nowrap}
+.level-unit .deck-label.level-db.off{color:var(--muted)}

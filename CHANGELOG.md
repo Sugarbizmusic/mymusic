@@ -1,3 +1,17 @@
+## Alpha 1.9.31
+- Event log now records lock-screen / car / headset button presses (media-button: play, pause, previous, next, with the song position) so we can see whether the Tesla's buttons reach the app. Look for "media-button" and "media-session" lines.
+- The lock screen and car controls now offer previous / next track instead of ±15 second skip (the app no longer registers the seek buttons with the phone; the on-screen 15 s buttons are unchanged).
+- When iPhone refuses to autostart a song (the "request is not allowed by the user agent" alert on the first song after opening the app), the song is now left loaded and the status says "Ready · tap play to start" instead of showing an error alert. The log line is play-needs-tap.
+- Bumped service-worker cache to mymusic-shell-v1-9-31.
+
+## Alpha 1.9.30
+- Level readout: under LEVEL on the deck it now shows the loudness change applied to the song that's playing (for example +4.7 dB or −2.1 dB; 0.0 dB if the song was already at the target), "…" while a song is being prepared, and OFF when Level is off. It updates on every song, including when Level was already on when you opened the app. "—" means Level couldn't process that song (very long file or an error) and it's playing as-is.
+- Bumped service-worker cache to mymusic-shell-v1-9-30.
+
+## Alpha 1.9.29
+- The Connect / Reconnect Drive button moved from the header to the right of "Your library", so the logo row isn't crowded. The header is now just the logo and the ⋯ menu. The button works exactly as before.
+- Bumped service-worker cache to mymusic-shell-v1-9-29.
+
 ## Alpha 1.9.28
 - New ⋯ menu button in the top right of the header, next to Connect / Reconnect (which stays where it was).
 - The menu holds Libraries and Rescan this library (moved from the Your library heading; they work exactly as before and only show once you're connected) and Event log (testing).
