@@ -129,3 +129,8 @@ Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reloa
 
 ### Alpha 1.9.31 — button logging, next/previous on the lock screen, no error alert on autostart refusal
 Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.31. Before a car test: ⋯ → Event log → Clear → Close. Afterwards share the log; "media-button" lines show what the car or lock screen sent.
+
+
+### Alpha 1.9.32 — spare player for locked track changes
+Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.32. Note index.html now contains a second <audio> element (id="audio2"); both must be present.
+Test: ⋯ → Event log → Clear → Close, play a folder, lock the phone and leave it through 3 or 4 song changes, then share the log. Success looks like a "track-swap" line for each change and no "audio-stalled" lines.

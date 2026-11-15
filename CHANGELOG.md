@@ -1,3 +1,13 @@
+## Alpha 1.9.32
+- Songs should now advance with the screen locked. The app now has a second, spare player: the next song is decoded into it while the current one is still playing, so a track change is a swap between two players instead of loading a new file. Loading a new file is what iPhone refuses to do while the screen is locked, which is why songs used to sit at 0:00 until the phone was unlocked.
+- Because the next song is already in memory, a swap needs no internet and no Drive sign-in. If the sign-in expires mid-drive, or Drive is unreachable, an already-loaded next song still plays.
+- Next / previous (on the car screen, the lock screen and in the app) now play instantly when the next song is ready, instead of starting a fresh download.
+- Pressing next several times quickly no longer piles up downloads: the newest press wins and older downloads are cancelled. Before, six presses started six downloads that fought each other over the car's connection, and several songs were skipped.
+- Prefetching now starts 40 seconds before the end of a song (was 25) to leave time to decode, and a song already downloaded is never downloaded a second time.
+- Event log additions: track-swap (played from the spare player, with how long it took), standby-ready / standby-slow (how quickly the next song became ready), track-cancelled and dl-cancelled (superseded presses), reuse-download, audio-primed.
+- Log fix: different songs no longer collapse into one "(x2)" line. Each file is now tracked separately, and the small file fetched at startup is labelled "order" instead of looking like a song.
+- Bumped service-worker cache to mymusic-shell-v1-9-32.
+
 ## Alpha 1.9.31
 - Event log now records lock-screen / car / headset button presses (media-button: play, pause, previous, next, with the song position) so we can see whether the Tesla's buttons reach the app. Look for "media-button" and "media-session" lines.
 - The lock screen and car controls now offer previous / next track instead of ±15 second skip (the app no longer registers the seek buttons with the phone; the on-screen 15 s buttons are unchanged).
