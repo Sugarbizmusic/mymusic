@@ -1,9 +1,9 @@
-// Hi-Fi45 Alpha 1.9.35 — a "How to use" guide in the ⋯ menu, for bandmates getting started; multi-library add/switch/share tested end to end, no code changes needed there.
+// Hi-Fi45 Alpha 1.9.37 — noted the per-folder cover-art image in the "How it works" guide.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 
 // ---- Event log (1.9.27): last 400 events kept in localStorage. Open it from the ⋯ menu, or HiFi45App.getLog() ----
-const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.35";let logBuf=[];
+const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.37";let logBuf=[];
 try{logBuf=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");if(!Array.isArray(logBuf))logBuf=[]}catch{logBuf=[]}
 // entry: [time, tag, message, V/H (page visible/hidden), repeat count, last time, collapse key]
 function hlog(tag,msg="",key){try{const now=Date.now(),vis=document.visibilityState==="hidden"?"H":"V";msg=String(msg).slice(0,220);
@@ -191,7 +191,41 @@ function renderLibraries(){
 function libMsg(t){const m=$("libMsg");if(m)m.textContent=t||""}
 function openLibraries(){$("libModal").hidden=false;document.body.classList.add("folder-modal-open");libMsg("");renderLibraries()}
 function closeLibraries(){$("libModal").hidden=true;document.body.classList.remove("folder-modal-open")}
-function openHowTo(){$("howtoModal").hidden=false;document.body.classList.add("folder-modal-open")}
+const HOWTO_TOPICS=[
+  {id:"overview",title:"Hi-Fi45 overview",html:`
+    <p>Hi-Fi45 plays your music straight from Google Drive — nothing is uploaded or copied anywhere else. It only <strong>reads</strong> your Drive; it can't change or delete anything there.</p>
+    <p>Songs are organized by whatever folder structure you already have in Drive. <strong>Browse folders</strong> shows that structure; <strong>All songs</strong> and <strong>Recent songs</strong> flatten it into one list.</p>
+    <p>Playback keeps going in the background, on the lock screen, and over Bluetooth in a car. The <strong>LEVEL</strong> button evens out loud and quiet tracks automatically.</p>`},
+  {id:"join",title:"Connecting to someone else's Drive folder",html:`
+    <p>If someone sends you a link to their music folder, open it on your phone — it'll ask you to connect Drive, then load their songs.</p>
+    <p>You'll only see a folder if its owner has shared it with your Google account in Drive. If you see "you don't have access," ask them to share it with you (see <strong>Allowing someone else access to your own Drive folder</strong>, below, from their side).</p>
+    <p>You can also open the ⋯ menu → <strong>Libraries</strong> and paste their folder link in yourself, instead of using a share link.</p>`},
+  {id:"setup",title:"How to set up your own Drive folder",html:`
+    <p>In Google Drive, make a folder and drop your song files into it (MP3, WAV, M4A, AAC, FLAC, and MP4 all work).</p>
+    <p>Subfolders are fine — an "Album" subfolder shows up as its own folder in Browse. Naming files with a number first (01, 02…) keeps them in that order; otherwise you can drag songs into a new order from inside Browse folders once the folder is connected as a library.</p>
+    <p>Drop a square cover image (JPG, PNG, or WEBP) into the same folder as the songs, and it becomes the cover art for every song in that folder — one image per folder, no filename matching needed.</p>
+    <p>That's it — there's nothing to configure in Drive itself beyond putting music (and optionally a cover image) in a folder.</p>`},
+  {id:"connect-own",title:"Connecting to your own Drive folder",html:`
+    <p>Open the ⋯ menu → <strong>Libraries</strong>, then paste your folder's link (in Drive: right-click the folder → Share → Copy link) into "Paste a Google Drive folder link" and tap Add.</p>
+    <p>It's added as a library you can switch back to anytime from that same screen — Hi-Fi45 remembers it.</p>`},
+  {id:"share-own",title:"Allowing someone else access to your own Drive folder",html:`
+    <p>In Google Drive, right-click your folder → <strong>Share</strong>, then add their Google account email. <strong>Viewer</strong> access is enough, since Hi-Fi45 only reads.</p>
+    <p>They also need to already be able to sign in to Hi-Fi45 itself — that's a separate step the app's owner handles (adding their email as a Google test user), not something Drive sharing alone covers.</p>
+    <p>Once both are done, open ⋯ → <strong>Libraries</strong>, tap the share icon next to your library, and send them that link — or just tell them your folder link directly. Either way, they'll see your songs next time they connect.</p>`}
+];
+let howtoTopic=null;
+function renderHowTo(){
+  const body=$("howtoBody"),back=$("howtoBack"),title=$("howtoTitle");
+  if(!howtoTopic){
+    back.hidden=true;title.textContent="How it works";
+    body.innerHTML=`<div class="howto-list">${HOWTO_TOPICS.map(t=>`<button type="button" class="howto-topic-btn" data-topic="${esc(t.id)}">${esc(t.title)}</button>`).join("")}</div>`;
+  }else{
+    const t=HOWTO_TOPICS.find(x=>x.id===howtoTopic);
+    back.hidden=false;title.textContent=t.title;
+    body.innerHTML=t.html;
+  }
+}
+function openHowTo(){howtoTopic=null;renderHowTo();$("howtoModal").hidden=false;document.body.classList.add("folder-modal-open")}
 function closeHowTo(){$("howtoModal").hidden=true;document.body.classList.remove("folder-modal-open")}
 async function addLibrary(text){
   const id=parseFolderId(text);
@@ -526,7 +560,7 @@ async function navigateTo(depth){if(orderEditing)stopOrderEditUI();browseMsg("")
 async function enterFolder(f){if(orderEditing)stopOrderEditUI();browseMsg("");allSongsMode=false;recentMode=false;folderStack.push({id:f.id,name:f.name});currentFolderId=f.id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
 function renderFolderContents(){renderBreadcrumbs();$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';return withToken(_renderFolderContents).catch(e=>{$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)} · tap Reconnect Drive</div>`})}
 async function _renderFolderContents(){$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';try{const items=await driveList(currentFolderId);const dirs=orderSort(currentFolderId,items.filter(f=>f.mimeType==="application/vnd.google-apps.folder"||(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")),dirTargetId);const local=items.filter(f=>SUPPORTED.has(extOf(f.name))).map(f=>({...f,path:currentFolderPath,parentId:currentFolderId,extension:extOf(f.name)}));const localSorted=orderSort(currentFolderId,local);local.length=0;local.push(...localSorted);browseItems={folderId:currentFolderId,dirs,local};const rows=dirs.map(f=>`<button type="button" class="folder-row" data-group="dir" data-id="${esc(dirTargetId(f))}" data-name="${esc(f.name)}"><span class="drag-handle" aria-hidden="true"></span><span class="folder-icon">📁</span><span class="folder-label">${esc(f.name)}</span><span class="folder-count">Open ›</span></button>`).join("");$("folderList").innerHTML=(rows||'')+(local.length?`<div class="folder-section-label">TRACKS IN THIS FOLDER</div>`+local.map(t=>`<button type="button" class="folder-track${queue[currentIndex]?.id===t.id?" current":""}" data-group="track" data-id="${esc(t.id)}"><span class="drag-handle" aria-hidden="true"></span><span class="ft-note">♫</span><span class="track-title">${esc(trackInfo(t).title)}</span><span>▶</span></button>`).join(""):'')||'<div class="folder-empty">This folder is empty.</div>';$("folderList").querySelectorAll(".folder-row").forEach(b=>b.onclick=()=>{if(orderEditing)return;enterFolder({id:b.dataset.id,name:b.dataset.name})});$("folderList").querySelectorAll(".folder-track").forEach(b=>b.onclick=()=>{if(orderEditing)return;setQueueForFolder(local);playTrackById(b.dataset.id);closeFolderModal()});if($("folderSummary"))$("folderSummary").textContent=`${dirs.length} folders · ${local.length} tracks`;setupOrderEditing()}catch(e){console.error(e);$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)}</div>`}}
-$("folderClose").onclick=closeFolderModal;$("folderModal").addEventListener("click",e=>{if(e.target.closest("[data-close-folder]"))closeFolderModal()});function onKey(e){if(e.key==="Escape"){if($("howtoModal")&&!$("howtoModal").hidden){closeHowTo();return}if($("libModal")&&!$("libModal").hidden){closeLibraries();return}if(!$("folderModal").hidden)closeFolderModal();else if(!pipWin&&document.body.classList.contains("player-expanded"))togglePlayerExpand(false)}}document.addEventListener("keydown",onKey);
+$("folderClose").onclick=closeFolderModal;$("folderModal").addEventListener("click",e=>{if(e.target.closest("[data-close-folder]"))closeFolderModal()});function onKey(e){if(e.key==="Escape"){if($("howtoModal")&&!$("howtoModal").hidden){if(howtoTopic){howtoTopic=null;renderHowTo()}else closeHowTo();return}if($("libModal")&&!$("libModal").hidden){closeLibraries();return}if(!$("folderModal").hidden)closeFolderModal();else if(!pipWin&&document.body.classList.contains("player-expanded"))togglePlayerExpand(false)}}document.addEventListener("keydown",onKey);
 function setQueueForFolder(list){queue=orderSort(list[0]?.parentId,list);currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null;clearStandby("new folder")}
 function renderTracks(){updatePeek();markPickerCurrent()}
 async function scanLibrary(){if(!accessToken||scanBusy)return;scanBusy=true;setStatus("Scanning Drive…");$("refreshBtn").disabled=true;const lib=curLib();try{try{const meta=await driveGet(ROOT());if(meta&&meta.name&&(lib.name!==meta.name||lib.pending)){lib.name=meta.name;lib.pending=false;saveLibraries()}}catch(err){if(err.status===404||err.status===403){const e2=new Error(NO_ACCESS_MSG(lib.name));e2.noAccess=true;throw e2}throw err}tracks=await walkFolder(ROOT());loadOrderCache();tracks=allSongsSort(tracks);queue=[...tracks];currentIndex=-1;folderStack=[{id:ROOT(),name:lib.name}];currentFolderId=ROOT();currentFolderPath=[];allSongsMode=false;recentMode=false;saveLibrary();updateLibraryUI();refreshOrder();formatCounts();renderTracks();setStatus(`Library scan complete · ${tracks.length} tracks`);if(!$("folderModal").hidden){if(pickerMode==="folders")renderFolderContents();else renderPickerList()}}catch(e){console.error(e);if(e.noAccess){tracks=[];formatCounts();setStatus(e.message)}else{setStatus("Drive connection needs attention");if(tokenValid())alert("Couldn't scan this library.\n\n"+e.message)}}finally{scanBusy=false;$("refreshBtn").disabled=false}}
@@ -539,6 +573,8 @@ function onDocClick(event){
   if(event.target.closest("#libClose,[data-close-lib]")){event.preventDefault();closeLibraries();return}
   if(event.target.closest("#howtoBtn")){event.preventDefault();openHowTo();return}
   if(event.target.closest("#howtoClose,[data-close-howto]")){event.preventDefault();closeHowTo();return}
+  if(event.target.closest("#howtoBack")){event.preventDefault();howtoTopic=null;renderHowTo();return}
+  {const tb=event.target.closest(".howto-topic-btn");if(tb){event.preventDefault();howtoTopic=tb.dataset.topic;renderHowTo();return}}
   const la=event.target.closest("#libList [data-act]");
   if(la){event.preventDefault();const id=la.closest(".lib-row").dataset.id,act=la.dataset.act;
     if(act==="pick"){if(id!==currentLibId)switchLibrary(id);closeLibraries()}

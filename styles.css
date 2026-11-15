@@ -1181,9 +1181,13 @@ body.in-pip{align-items:safe center;justify-content:safe center}
 /* ---- 1.9.34: REW disabled during its post-restart cooldown ---- */
 .hw-btn:disabled,.hw-btn.dim{cursor:default;opacity:.4;pointer-events:none}
 
-/* ---- 1.9.35: How to use guide ---- */
+/* ---- 1.9.37/1.9.37: How it works guide, now split into topics ---- */
 .howto-dialog{height:auto;max-height:min(720px,88dvh)}
 .howto-body{overflow:auto;min-height:0;padding-right:2px}
-.howto-body h3{margin:16px 0 4px;font-size:13px;letter-spacing:.3px;color:var(--gold)}
-.howto-body h3:first-child{margin-top:0}
-.howto-body p{margin:0 0 4px;font-size:13px;line-height:1.5;color:var(--cream-soft)}
+.howto-body p{margin:0 0 10px;font-size:13px;line-height:1.5;color:var(--cream-soft)}
+.howto-body p:last-child{margin-bottom:0}
+.howto-title-row{display:flex;align-items:center;gap:10px}
+.howto-back{flex:0 0 auto}
+.howto-list{display:flex;flex-direction:column;gap:8px}
+.howto-topic-btn{text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel-raised,#2a1730);color:var(--cream-soft);font-size:14px;cursor:pointer}
+.howto-topic-btn:hover{border-color:var(--gold);background:#432347}

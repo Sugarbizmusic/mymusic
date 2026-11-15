@@ -1,3 +1,11 @@
+## Alpha 1.9.37
+- The "How it works" guide's "How to set up your own Drive folder" topic now mentions dropping a square cover image into a folder — this was already supported by the app (any JPG/PNG/WEBP image in a song's folder becomes that folder's cover art), it just wasn't documented anywhere until now.
+
+## Alpha 1.9.36
+- "How to use" is now "How it works" in the ⋯ menu, and opens to a list of 5 topics instead of one long page: Hi-Fi45 overview, Connecting to someone else's Drive folder, How to set up your own Drive folder, Connecting to your own Drive folder, and Allowing someone else access to your own Drive folder.
+- A bandmate who wants to host their own music (not just join yours) now has a guide for that too — creating a folder, adding it as a library, and sharing it with others.
+- Added a back arrow in the guide's header to return to the topic list; the X still closes the whole guide from anywhere, and Escape steps back one level before closing.
+
 ## Alpha 1.9.35
 - Added a "How to use" guide to the ⋯ menu, for bandmates getting started: connecting Drive, getting added to a shared library, switching libraries, browsing and playing, and what the LEVEL button does. It's available even before connecting Drive.
 - Tested the existing "add another library" feature end to end: pasting a Drive folder link, switching between libraries with separate caches, sharing a library by link, and the message shown when you don't have access to a folder. All of it already worked; no code changes were needed there.

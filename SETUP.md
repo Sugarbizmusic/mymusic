@@ -147,3 +147,11 @@ Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reloa
 
 ### Alpha 1.9.35 — How to use guide
 Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.35. ⋯ → How to use opens a short guide for new users.
+
+
+### Alpha 1.9.36 — "How it works" split into topics
+Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.36. ⋯ → How it works now opens a topic list.
+
+
+### Alpha 1.9.37 — cover-art note added to the guide
+Text-only change to the "How it works" guide. Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9.37.
