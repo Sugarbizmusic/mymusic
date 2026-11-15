@@ -134,3 +134,16 @@ Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reloa
 ### Alpha 1.9.32 — spare player for locked track changes
 Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.32. Note index.html now contains a second <audio> element (id="audio2"); both must be present.
 Test: ⋯ → Event log → Clear → Close, play a folder, lock the phone and leave it through 3 or 4 song changes, then share the log. Success looks like a "track-swap" line for each change and no "audio-stalled" lines.
+
+
+### Alpha 1.9.33 — instant next/previous mid-song, car cover art, play/pause + scrubber sync
+Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.33.
+Test in the car: press next/previous partway through a song (not just near the end) and confirm it's instant; check that cover art now shows on the car screen; check that the car's play/pause button and scrubber match what's actually playing.
+
+
+### Alpha 1.9.34 — REW only restarts the track, with a 4 s cooldown
+Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.34. REW never jumps to a different song now; it restarts the current one and grays out for 4 seconds.
+
+
+### Alpha 1.9.35 — How to use guide
+Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reload once and confirm the player shows ALPHA 1.9.35. ⋯ → How to use opens a short guide for new users.

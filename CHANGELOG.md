@@ -1,3 +1,21 @@
+## Alpha 1.9.35
+- Added a "How to use" guide to the ⋯ menu, for bandmates getting started: connecting Drive, getting added to a shared library, switching libraries, browsing and playing, and what the LEVEL button does. It's available even before connecting Drive.
+- Tested the existing "add another library" feature end to end: pasting a Drive folder link, switching between libraries with separate caches, sharing a library by link, and the message shown when you don't have access to a folder. All of it already worked; no code changes were needed there.
+- Bumped service-worker cache to mymusic-shell-v1-9-35.
+
+## Alpha 1.9.34
+- REW / previous (the on-screen button, the lock screen and the car's previous button) no longer jumps to the previous track — that always meant a fresh download, which could look broken on a slow car connection. It now only restarts the current song, every time, from anywhere in the track.
+- After a restart, the button is disabled for 4 seconds (grayed out on screen; the lock screen / car press does nothing) so a second press right after doesn't restart the song again pointlessly. It re-enables after 4 seconds.
+- Log line: rewind.
+- Bumped service-worker cache to mymusic-shell-v1-9-34.
+
+## Alpha 1.9.33
+- Next / previous should now also work instantly in the middle of a song, not just right before it ends. The spare player used to load the next song only in the last 40 seconds; it now starts loading as soon as the current song begins, so a next/previous press anywhere in the song can use the instant swap from 1.9.32, including with the screen locked or the car disconnected from the phone's internet.
+- Cover art sent to the lock screen and car is no longer a blob: link, which those screens can't open; it's now a plain embedded image, and the lock screen / car are told to refresh it once the art finishes loading (art can arrive a moment after the song starts playing).
+- The play/pause icon and the lock screen / car's own play/pause state are now set directly from the real player state every time it's checked, instead of drifting out of sync after a stall or a background hiccup. Likewise, the song's position is now reported to the lock screen and car, which should make their scrubber track correctly.
+- Log line prefetch-start now says "at M:SS of current song" instead of "with N s left", since prefetching can now start right at 0:00.
+- Bumped service-worker cache to mymusic-shell-v1-9-33.
+
 ## Alpha 1.9.32
 - Songs should now advance with the screen locked. The app now has a second, spare player: the next song is decoded into it while the current one is still playing, so a track change is a swap between two players instead of loading a new file. Loading a new file is what iPhone refuses to do while the screen is locked, which is why songs used to sit at 0:00 until the phone was unlocked.
 - Because the next song is already in memory, a swap needs no internet and no Drive sign-in. If the sign-in expires mid-drive, or Drive is unreachable, an already-loaded next song still plays.
