@@ -1,3 +1,7 @@
+## Alpha 1.9.43
+- Found the real cause of the "Failed to fetch" errors, from the event log you sent over: downloads were dying mid-stream (a second or two into a multi-MB transfer, logged as "dropped while downloading"), not failing to connect in the first place — a dropped wifi/connection partway through, not at the start. 1.9.41's retry only covered a failed connect, so it never caught this. Now the whole download — connecting and reading — is retried as one unit, up to 3 attempts total, which is what actually recovers from a mid-transfer drop.
+- Also fixed: a prefetch that gets cancelled because you've already moved to a different song was incorrectly logging as a failure ("dropped while downloading") instead of a normal cancellation — harmless, but it was cluttering the event log and made it harder to tell a real failure from an expected one.
+
 ## Alpha 1.9.42
 - Moved Shuffle off the Browse folders screen entirely. It's now a lit icon button on the Now Playing panel, to the left of the copy-link icon — it lights up gold when shuffle is on for whatever's currently playing, and works whether or not Browse folders is even open.
 

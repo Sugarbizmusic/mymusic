@@ -1,10 +1,11 @@
-// Hi-Fi45 Alpha 1.9.42 — moved Shuffle onto the Now Playing panel as a lit icon button (left of the copy-link
-// icon) instead of a text pill inside Browse folders; it now lights up based on whatever's actually playing.
+// Hi-Fi45 Alpha 1.9.43 — the event log showed track downloads actually dying mid-stream (a connection
+// dropping partway through, not just failing to connect); the retry added in 1.9.41 only covered a failed
+// connect, so it never caught this. Now the whole download — connect and read — retries as one unit.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 
 // ---- Event log (1.9.27): last 400 events kept in localStorage. Open it from the ⋯ menu, or HiFi45App.getLog() ----
-const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.42";let logBuf=[];
+const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.43";let logBuf=[];
 try{logBuf=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");if(!Array.isArray(logBuf))logBuf=[]}catch{logBuf=[]}
 // entry: [time, tag, message, V/H (page visible/hidden), repeat count, last time, collapse key]
 function hlog(tag,msg="",key){try{const now=Date.now(),vis=document.visibilityState==="hidden"?"H":"V";msg=String(msg).slice(0,220);
@@ -621,7 +622,7 @@ function setQueueForFolder(list){
   queue=(shuffleOn&&shuffleFolderId===folderId)?shuffleArray(ordered):ordered;
   currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null;clearStandby("new folder");
 }
-// 1.9.42: the Shuffle control lives on the Now Playing panel, which can be on screen whether or not the
+// 1.9.43: the Shuffle control lives on the Now Playing panel, which can be on screen whether or not the
 // Browse folders list is open — so it keys off whatever's actually playing first, rather than requiring
 // a fresh browseItems cache for currentFolderId. It falls back to the browsed folder only when nothing's
 // playing yet (e.g. shuffling before the first tap).
@@ -813,24 +814,33 @@ window.HiFi45App=window.Drive45App=window.MyMusicApp=Object.freeze({
 });
 async function downloadFile(id,kind="song",signal){
   const t0=Date.now(),sid=`${kind} ${String(id).slice(0,8)}`,ck=kind+id;hlog("dl-start",sid,"dls"+ck);
-  const doFetch=()=>fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`,{headers:{Authorization:`Bearer ${accessToken}`},signal});
-  let r;
-  try{r=await doFetch()}
-  catch(e){
-    // 1.9.42: a bare "Failed to fetch" here is the browser's generic network-layer failure (dropped
-    // connection, DNS hiccup, a momentary cell handoff — common in a moving car) rather than anything
-    // the app did wrong. One quick retry clears most of these instead of failing the whole track.
-    if(e&&e.name==="AbortError"){hlog("dl-cancelled",sid,"dlc"+ck);throw e}
-    hlog("dl-retry",`${sid} network error: ${e&&e.message} — retrying once`,"dlr"+ck);
-    await new Promise(res=>setTimeout(res,900));
-    if(signal&&signal.aborted){hlog("dl-cancelled",sid,"dlc"+ck);throw new DOMException("aborted","AbortError")}
-    try{r=await doFetch()}
-    catch(e2){if(e2&&e2.name==="AbortError"){hlog("dl-cancelled",sid,"dlc"+ck);throw e2}hlog("dl-fail",`${sid} network error (after retry): ${e2&&e2.message} after ${Date.now()-t0} ms`,"dlf"+ck);throw e2}
+  // 1.9.43: the event log from the field showed "Failed to fetch" wasn't happening at connect time — it was
+  // happening a second or two IN, while the body was still streaming down (logged as "dropped while
+  // downloading"), i.e. a wifi/cell link dropping mid-transfer. 1.9.41's retry only covered a failed connect,
+  // so it never fired for this. Now the whole fetch-and-read is retried as one unit, up to 3 attempts total,
+  // for any network-level failure at either stage — that's what actually clears a mid-download drop.
+  const MAX_TRIES=3;
+  for(let attempt=1;attempt<=MAX_TRIES;attempt++){
+    try{
+      const r=await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`,{headers:{Authorization:`Bearer ${accessToken}`},signal});
+      if(r.status===401){hlog("dl-fail",`${sid} status 401 (sign-in expired)`,"dlf"+ck);authExpired();const e=new Error("Drive authorization expired. Please reconnect.");e.noRetry=true;throw e}
+      if(!r.ok){let why="";try{why=((await r.text()).match(/"reason":\s*"([^"]+)"/)||[])[1]||""}catch{}hlog("dl-fail",`${sid} status ${r.status} ${why} after ${Date.now()-t0} ms`,"dlf"+ck);const e=new Error(`Couldn't download file (${r.status})`);e.noRetry=true;throw e}
+      const b=await r.blob();
+      if(signal&&signal.aborted){hlog("dl-cancelled",sid,"dlc"+ck);throw new DOMException("aborted","AbortError")}
+      hlog("dl-ok",`${sid} ${(b.size/1048576).toFixed(1)} MB in ${Date.now()-t0} ms`);
+      return b;
+    }catch(e){
+      if((e&&e.name==="AbortError")||(signal&&signal.aborted)){hlog("dl-cancelled",sid,"dlc"+ck);throw(e&&e.name==="AbortError")?e:new DOMException("aborted","AbortError")}
+      if(e&&e.noRetry)throw e;
+      if(attempt<MAX_TRIES){
+        hlog("dl-retry",`${sid} attempt ${attempt} dropped: ${e&&e.message} — retrying`,"dlr"+ck);
+        await new Promise(res=>setTimeout(res,900*attempt));
+        continue;
+      }
+      hlog("dl-fail",`${sid} gave up after ${attempt} attempts: ${e&&e.message} after ${Date.now()-t0} ms`,"dlf"+ck);
+      throw e;
+    }
   }
-  if(r.status===401){hlog("dl-fail",`${sid} status 401 (sign-in expired)`,"dlf"+ck);authExpired();throw new Error("Drive authorization expired. Please reconnect.")}
-  if(!r.ok){let why="";try{why=((await r.text()).match(/"reason":\s*"([^"]+)"/)||[])[1]||""}catch{}hlog("dl-fail",`${sid} status ${r.status} ${why} after ${Date.now()-t0} ms`,"dlf"+ck);throw new Error(`Couldn't download file (${r.status})`)}
-  try{const b=await r.blob();if(signal&&signal.aborted){hlog("dl-cancelled",sid,"dlc"+ck);throw new DOMException("aborted","AbortError")}hlog("dl-ok",`${sid} ${(b.size/1048576).toFixed(1)} MB in ${Date.now()-t0} ms`);return b}
-  catch(e){hlog("dl-fail",`${sid} dropped while downloading: ${e&&e.message} after ${Date.now()-t0} ms`,"dlf"+ck);throw e}
 }
 // Cover art: keep the current picture until the next one is ready (no flash of the default art between songs).
 let currentArtId=null,artJob=0;

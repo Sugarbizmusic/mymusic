@@ -175,3 +175,7 @@ Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9
 
 ### Alpha 1.9.42 — Shuffle moved to the Now Playing panel
 Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9.42. Shuffle is no longer in Browse folders at all — it's a lit icon on the Now Playing panel, left of the copy-link icon.
+
+
+### Alpha 1.9.43 — real fix for "Failed to fetch" (mid-download drops)
+Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9.43. The 1.9.41 retry only covered a failed connect; the event log showed the actual failure was a connection dropping partway through the download. The whole download now retries as one unit (up to 3 attempts) so a mid-transfer drop is recovered too.
