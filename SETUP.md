@@ -163,3 +163,7 @@ Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9
 
 ### Alpha 1.9.39 — cover art resized for the car
 Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9.39.
+
+
+### Alpha 1.9.40 — Shuffle
+Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9.40. A Shuffle button now sits next to Edit order in Browse folders.

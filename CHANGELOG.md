@@ -1,3 +1,7 @@
+## Alpha 1.9.40
+- Added a Shuffle button in Browse folders, next to Edit order. It shuffles the playback order of whatever folder you're currently in — the on-screen list still shows the regular A-Z/custom order, only the next/previous walk-through is shuffled, same as "shuffle this album" in other music apps. If something from that folder is already playing, shuffling keeps it playing (no restart) and just reshuffles what comes after; turning it back off restores the normal order the same way.
+- Shuffle doesn't touch the folder's saved custom order (the one Edit order manages) — it's purely a playback-order setting for the current session.
+
 ## Alpha 1.9.39
 - Cover art sent to the car/lock screen is now resized and compressed to a small 512x512 JPEG before it's handed to MediaSession, instead of the original image at whatever size and aspect ratio it came in at. The car gets cover art over Bluetooth (AVRCP), which is much stricter about image size/format than the iPhone's own lock screen — a big or non-square image can work fine on the lock screen and simply never arrive at the car. The event log now also records the before/after size each time, so if art still doesn't show up in the car after this, the log will say exactly what was sent.
 

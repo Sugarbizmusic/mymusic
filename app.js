@@ -1,9 +1,9 @@
-// Hi-Fi45 Alpha 1.9.39 — resize/compress cover art to a small square JPEG before it goes to MediaSession, since Bluetooth AVRCP (the car's cover-art path) is much stricter than the lock screen about image size and aspect ratio.
+// Hi-Fi45 Alpha 1.9.40 — a Shuffle toggle for Browse folders, shuffling playback order within the current folder without touching its saved custom order.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 
 // ---- Event log (1.9.27): last 400 events kept in localStorage. Open it from the ⋯ menu, or HiFi45App.getLog() ----
-const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.39";let logBuf=[];
+const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.40";let logBuf=[];
 try{logBuf=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");if(!Array.isArray(logBuf))logBuf=[]}catch{logBuf=[]}
 // entry: [time, tag, message, V/H (page visible/hidden), repeat count, last time, collapse key]
 function hlog(tag,msg="",key){try{const now=Date.now(),vis=document.visibilityState==="hidden"?"H":"V";msg=String(msg).slice(0,220);
@@ -302,7 +302,7 @@ function removeLibrary(id){
 }
 // ---- Custom order: hifi45-order.json in the library's top folder ----
 const ORDER_FILE="hifi45-order.json",READ_SCOPE="https://www.googleapis.com/auth/drive.readonly",WRITE_SCOPE="https://www.googleapis.com/auth/drive";
-let grantedScopes="",scopeWaiter=null,orderData={folders:{}},orderFileId=null,localOrder={folders:{}},orderEditing=false,orderCanWrite=null,browseItems=null;
+let grantedScopes="",scopeWaiter=null,orderData={folders:{}},orderFileId=null,localOrder={folders:{}},orderEditing=false,orderCanWrite=null,browseItems=null,shuffleOn=false,shuffleFolderId=null;
 const dirTargetId=f=>f.mimeType==="application/vnd.google-apps.shortcut"?f.shortcutDetails.targetId:f.id;
 // Song lists saved before 1.9.26 lack folder ids, which All songs needs for custom folder order: rescan once.
 function needsRescan(){return tracks.length>0&&!tracks.some(t=>Array.isArray(t.pathIds))}
@@ -612,9 +612,35 @@ function togglePlayerExpand(force){const next=typeof force==="boolean"?force:!do
 async function navigateTo(depth){if(orderEditing)stopOrderEditUI();browseMsg("");allSongsMode=false;recentMode=false;folderStack=folderStack.slice(0,depth+1);currentFolderId=folderStack.at(-1).id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
 async function enterFolder(f){if(orderEditing)stopOrderEditUI();browseMsg("");allSongsMode=false;recentMode=false;folderStack.push({id:f.id,name:f.name});currentFolderId=f.id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
 function renderFolderContents(){renderBreadcrumbs();$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';return withToken(_renderFolderContents).catch(e=>{$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)} · tap Reconnect Drive</div>`})}
-async function _renderFolderContents(){$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';try{const items=await driveList(currentFolderId);const dirs=orderSort(currentFolderId,items.filter(f=>f.mimeType==="application/vnd.google-apps.folder"||(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")),dirTargetId);const local=items.filter(f=>SUPPORTED.has(extOf(f.name))).map(f=>({...f,path:currentFolderPath,parentId:currentFolderId,extension:extOf(f.name)}));const localSorted=orderSort(currentFolderId,local);local.length=0;local.push(...localSorted);browseItems={folderId:currentFolderId,dirs,local};const rows=dirs.map(f=>`<button type="button" class="folder-row" data-group="dir" data-id="${esc(dirTargetId(f))}" data-name="${esc(f.name)}"><span class="drag-handle" aria-hidden="true"></span><span class="folder-icon">📁</span><span class="folder-label">${esc(f.name)}</span><span class="folder-count">Open ›</span></button>`).join("");$("folderList").innerHTML=(rows||'')+(local.length?`<div class="folder-section-label">TRACKS IN THIS FOLDER</div>`+local.map(t=>`<button type="button" class="folder-track${queue[currentIndex]?.id===t.id?" current":""}" data-group="track" data-id="${esc(t.id)}"><span class="drag-handle" aria-hidden="true"></span><span class="ft-note">♫</span><span class="track-title">${esc(trackInfo(t).title)}</span>${shareIconSpan(t.id)}<span>▶</span></button>`).join(""):'')||'<div class="folder-empty">This folder is empty.</div>';$("folderList").querySelectorAll(".folder-row").forEach(b=>b.onclick=()=>{if(orderEditing)return;enterFolder({id:b.dataset.id,name:b.dataset.name})});$("folderList").querySelectorAll(".folder-track").forEach(b=>b.onclick=()=>{if(orderEditing)return;setQueueForFolder(local);playTrackById(b.dataset.id);closeFolderModal()});wireShareButtons($("folderList"));if($("folderSummary"))$("folderSummary").textContent=`${dirs.length} folders · ${local.length} tracks`;setupOrderEditing()}catch(e){console.error(e);$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)}</div>`}}
+async function _renderFolderContents(){$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';try{const items=await driveList(currentFolderId);const dirs=orderSort(currentFolderId,items.filter(f=>f.mimeType==="application/vnd.google-apps.folder"||(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")),dirTargetId);const local=items.filter(f=>SUPPORTED.has(extOf(f.name))).map(f=>({...f,path:currentFolderPath,parentId:currentFolderId,extension:extOf(f.name)}));const localSorted=orderSort(currentFolderId,local);local.length=0;local.push(...localSorted);browseItems={folderId:currentFolderId,dirs,local};const rows=dirs.map(f=>`<button type="button" class="folder-row" data-group="dir" data-id="${esc(dirTargetId(f))}" data-name="${esc(f.name)}"><span class="drag-handle" aria-hidden="true"></span><span class="folder-icon">📁</span><span class="folder-label">${esc(f.name)}</span><span class="folder-count">Open ›</span></button>`).join("");$("folderList").innerHTML=(rows||'')+(local.length?`<div class="folder-section-label">TRACKS IN THIS FOLDER</div>`+local.map(t=>`<button type="button" class="folder-track${queue[currentIndex]?.id===t.id?" current":""}" data-group="track" data-id="${esc(t.id)}"><span class="drag-handle" aria-hidden="true"></span><span class="ft-note">♫</span><span class="track-title">${esc(trackInfo(t).title)}</span>${shareIconSpan(t.id)}<span>▶</span></button>`).join(""):'')||'<div class="folder-empty">This folder is empty.</div>';$("folderList").querySelectorAll(".folder-row").forEach(b=>b.onclick=()=>{if(orderEditing)return;enterFolder({id:b.dataset.id,name:b.dataset.name})});$("folderList").querySelectorAll(".folder-track").forEach(b=>b.onclick=()=>{if(orderEditing)return;setQueueForFolder(local);playTrackById(b.dataset.id);closeFolderModal()});wireShareButtons($("folderList"));if($("folderSummary"))$("folderSummary").textContent=`${dirs.length} folders · ${local.length} tracks`;setupOrderEditing();updateShuffleBtn()}catch(e){console.error(e);$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)}</div>`}}
 $("folderClose").onclick=closeFolderModal;$("folderModal").addEventListener("click",e=>{if(e.target.closest("[data-close-folder]"))closeFolderModal()});function onKey(e){if(e.key==="Escape"){if($("howtoModal")&&!$("howtoModal").hidden){if(howtoTopic){howtoTopic=null;renderHowTo()}else closeHowTo();return}if($("libModal")&&!$("libModal").hidden){closeLibraries();return}if(!$("folderModal").hidden)closeFolderModal();else if(!pipWin&&document.body.classList.contains("player-expanded"))togglePlayerExpand(false)}}document.addEventListener("keydown",onKey);
-function setQueueForFolder(list){queue=orderSort(list[0]?.parentId,list);currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null;clearStandby("new folder")}
+function shuffleArray(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function setQueueForFolder(list){
+  const folderId=list[0]?.parentId,ordered=orderSort(folderId,list);
+  queue=(shuffleOn&&shuffleFolderId===folderId)?shuffleArray(ordered):ordered;
+  currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null;clearStandby("new folder");
+}
+function updateShuffleBtn(){
+  const b=$("shuffleBtn");if(!b)return;
+  const active=shuffleOn&&shuffleFolderId===currentFolderId;
+  b.classList.toggle("active",active);b.setAttribute("aria-pressed",active?"true":"false");
+}
+// Shuffle only reorders *playback* order (the queue next/previous walk through); the on-screen folder
+// list keeps showing the regular A–Z/custom order, same as Spotify-style "shuffle this folder" behavior.
+// Toggling it re-shuffles (or restores) the current queue in place, keeping whatever's already playing
+// right where it is rather than restarting it.
+function toggleShuffle(){
+  if(!browseItems||browseItems.folderId!==currentFolderId||!browseItems.local.length)return;
+  const turningOn=!(shuffleOn&&shuffleFolderId===currentFolderId);
+  const ordered=orderSort(currentFolderId,browseItems.local);
+  const playingId=queue[currentIndex]?.id;
+  queue=turningOn?shuffleArray(ordered):ordered;
+  currentIndex=playingId?queue.findIndex(t=>t.id===playingId):-1;
+  shuffleOn=turningOn;shuffleFolderId=turningOn?currentFolderId:null;
+  prefetchedNextId=null;prefetchedBlob=null;clearStandby(turningOn?"shuffle on":"shuffle off");
+  updateShuffleBtn();
+  hlog("shuffle-toggle",turningOn?"on, this folder":"off");
+}
 function renderTracks(){updatePeek();markPickerCurrent()}
 async function scanLibrary(){if(!accessToken||scanBusy)return;scanBusy=true;setStatus("Scanning Drive…");$("refreshBtn").disabled=true;const lib=curLib();try{try{const meta=await driveGet(ROOT());if(meta&&meta.name&&(lib.name!==meta.name||lib.pending)){lib.name=meta.name;lib.pending=false;saveLibraries()}}catch(err){if(err.status===404||err.status===403){const e2=new Error(NO_ACCESS_MSG(lib.name));e2.noAccess=true;throw e2}throw err}tracks=await walkFolder(ROOT());loadOrderCache();tracks=allSongsSort(tracks);queue=[...tracks];currentIndex=-1;folderStack=[{id:ROOT(),name:lib.name}];currentFolderId=ROOT();currentFolderPath=[];allSongsMode=false;recentMode=false;saveLibrary();updateLibraryUI();refreshOrder();formatCounts();renderTracks();setStatus(`Library scan complete · ${tracks.length} tracks`);tryPendingShare();if(!$("folderModal").hidden){if(pickerMode==="folders")renderFolderContents();else renderPickerList()}}catch(e){console.error(e);if(e.noAccess){tracks=[];formatCounts();setStatus(e.message);pendingShareTrackId=null}else{setStatus("Drive connection needs attention");if(tokenValid())alert("Couldn't scan this library.\n\n"+e.message)}}finally{scanBusy=false;$("refreshBtn").disabled=false}}
 function showAllSongs(){openPicker("all")}
@@ -634,6 +660,8 @@ function onDocClick(event){
     else if(act==="remove")removeLibrary(id);
     else if(act==="share"){const l=libraries.find(x=>x.id===id),u=shareUrl(id);copyText(u).then(ok=>libMsg(ok?`Link to “${l.name}” copied.`:`Copy this link: ${u}`))}
     return}
+  const sfb=event.target.closest("#shuffleBtn");
+  if(sfb){event.preventDefault();toggleShuffle();return}
   const ob=event.target.closest("#orderBtn");
   if(ob){event.preventDefault();if(orderEditing)finishOrderEdit(false);else startOrderEdit();return}
   const orr=event.target.closest("#orderResetBtn");
