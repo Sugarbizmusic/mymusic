@@ -1,3 +1,6 @@
+## Alpha 1.9.42
+- Moved Shuffle off the Browse folders screen entirely. It's now a lit icon button on the Now Playing panel, to the left of the copy-link icon — it lights up gold when shuffle is on for whatever's currently playing, and works whether or not Browse folders is even open.
+
 ## Alpha 1.9.41
 - Fixed: right after 1.9.40 shipped, every song failed to load with a "Failed to fetch" alert. Root cause was a weak/dropped network connection at the moment of download (the same kind of momentary signal loss or cell-tower handoff a phone or car modem can hit while moving) — nothing in the 1.9.38/1.9.39/1.9.40 code touched the download path itself. A track download that fails at the network level now retries once automatically before giving up, which clears most one-off blips silently. If every track is still failing after the retry (a real, sustained outage), the alert now says plainly that it looks like a connection problem rather than showing the old generic "couldn't be loaded" message — so it's obvious at a glance whether it's the app or the signal.
 

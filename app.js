@@ -1,11 +1,10 @@
-// Hi-Fi45 Alpha 1.9.41 — a flaky-connection fix: a track download that fails at the network level (a dropped
-// signal, a cell-tower handoff mid-drive) now retries once automatically before giving up, and the "couldn't
-// be loaded" alert now says plainly when it looks like a connection problem rather than an app problem.
+// Hi-Fi45 Alpha 1.9.42 — moved Shuffle onto the Now Playing panel as a lit icon button (left of the copy-link
+// icon) instead of a text pill inside Browse folders; it now lights up based on whatever's actually playing.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 
 // ---- Event log (1.9.27): last 400 events kept in localStorage. Open it from the ⋯ menu, or HiFi45App.getLog() ----
-const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.41";let logBuf=[];
+const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.42";let logBuf=[];
 try{logBuf=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");if(!Array.isArray(logBuf))logBuf=[]}catch{logBuf=[]}
 // entry: [time, tag, message, V/H (page visible/hidden), repeat count, last time, collapse key]
 function hlog(tag,msg="",key){try{const now=Date.now(),vis=document.visibilityState==="hidden"?"H":"V";msg=String(msg).slice(0,220);
@@ -622,9 +621,19 @@ function setQueueForFolder(list){
   queue=(shuffleOn&&shuffleFolderId===folderId)?shuffleArray(ordered):ordered;
   currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null;clearStandby("new folder");
 }
+// 1.9.42: the Shuffle control lives on the Now Playing panel, which can be on screen whether or not the
+// Browse folders list is open — so it keys off whatever's actually playing first, rather than requiring
+// a fresh browseItems cache for currentFolderId. It falls back to the browsed folder only when nothing's
+// playing yet (e.g. shuffling before the first tap).
+function shuffleContextFolder(){
+  const playing=queue[currentIndex];
+  if(playing)return playing.parentId;
+  return (browseItems&&browseItems.folderId===currentFolderId)?currentFolderId:null;
+}
 function updateShuffleBtn(){
   const b=$("shuffleBtn");if(!b)return;
-  const active=shuffleOn&&shuffleFolderId===currentFolderId;
+  const folderId=shuffleContextFolder();
+  const active=!!(shuffleOn&&folderId&&shuffleFolderId===folderId);
   b.classList.toggle("active",active);b.setAttribute("aria-pressed",active?"true":"false");
 }
 // Shuffle only reorders *playback* order (the queue next/previous walk through); the on-screen folder
@@ -632,13 +641,15 @@ function updateShuffleBtn(){
 // Toggling it re-shuffles (or restores) the current queue in place, keeping whatever's already playing
 // right where it is rather than restarting it.
 function toggleShuffle(){
-  if(!browseItems||browseItems.folderId!==currentFolderId||!browseItems.local.length)return;
-  const turningOn=!(shuffleOn&&shuffleFolderId===currentFolderId);
-  const ordered=orderSort(currentFolderId,browseItems.local);
+  const folderId=shuffleContextFolder();if(!folderId)return;
+  const local=(browseItems&&browseItems.folderId===folderId)?browseItems.local:tracks.filter(t=>t.parentId===folderId);
+  if(!local.length)return;
+  const turningOn=!(shuffleOn&&shuffleFolderId===folderId);
+  const ordered=orderSort(folderId,local);
   const playingId=queue[currentIndex]?.id;
   queue=turningOn?shuffleArray(ordered):ordered;
   currentIndex=playingId?queue.findIndex(t=>t.id===playingId):-1;
-  shuffleOn=turningOn;shuffleFolderId=turningOn?currentFolderId:null;
+  shuffleOn=turningOn;shuffleFolderId=turningOn?folderId:null;
   prefetchedNextId=null;prefetchedBlob=null;clearStandby(turningOn?"shuffle on":"shuffle off");
   updateShuffleBtn();
   hlog("shuffle-toggle",turningOn?"on, this folder":"off");
@@ -806,7 +817,7 @@ async function downloadFile(id,kind="song",signal){
   let r;
   try{r=await doFetch()}
   catch(e){
-    // 1.9.41: a bare "Failed to fetch" here is the browser's generic network-layer failure (dropped
+    // 1.9.42: a bare "Failed to fetch" here is the browser's generic network-layer failure (dropped
     // connection, DNS hiccup, a momentary cell handoff — common in a moving car) rather than anything
     // the app did wrong. One quick retry clears most of these instead of failing the whole track.
     if(e&&e.name==="AbortError"){hlog("dl-cancelled",sid,"dlc"+ck);throw e}
@@ -905,7 +916,7 @@ async function _playTrackById(id,opts={}){const idx=queue.findIndex(t=>t.id===id
   if((e&&e.name==="AbortError")||gen!==playGen){hlog("track-cancelled",`${i.title} | replaced by a newer choice`,"canc");return}
   if(e&&e.name==="NotAllowedError"){hlog("play-needs-tap",`${i.title} | iPhone refused to autostart after ${Date.now()-T0} ms; song is loaded`);setPlayIcon("play");setStatus("Ready · tap play to start");hideResumePrompt();if(!opts.noHistory)pushHistory(t.id);renderTracks();updateMediaSession(t,i);return}
   hlog("track-fail",`${i.title} | ${e&&e.message} after ${Date.now()-T0} ms`);setPlayIcon("play");if(!tokenValid()){setStatus("Drive sign-in expired · tap to continue");showResumePrompt(id)}else{setStatus("Playback unavailable");const netIssue=e&&/Failed to fetch|network error/i.test(e.message||"");alert(netIssue?"This track couldn't load — looks like a weak or dropped connection.\n\nCheck your signal and try again.":`This track couldn't be loaded.\n\n${e.message}`)}}}
-function updateMediaSession(t,i){if(!("mediaSession"in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:i.title,artist:i.artist,album:i.release,artwork:currentArtDataUrl?[{src:currentArtDataUrl,sizes:"512x512",type:"image/jpeg"}]:[]});setMediaSessionState();const act=(name,fn)=>()=>{hlog("media-button",`${name} | was ${audio.paused?"paused":"playing"} at ${formatTime(audio.currentTime)}`);return fn()};
+function updateMediaSession(t,i){updateShuffleBtn();if(!("mediaSession"in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:i.title,artist:i.artist,album:i.release,artwork:currentArtDataUrl?[{src:currentArtDataUrl,sizes:"512x512",type:"image/jpeg"}]:[]});setMediaSessionState();const act=(name,fn)=>()=>{hlog("media-button",`${name} | was ${audio.paused?"paused":"playing"} at ${formatTime(audio.currentTime)}`);return fn()};
   const h={play:act("play",()=>audio.play().catch(e=>hlog("media-button-fail",`play ${e&&e.name}`))),pause:act("pause",()=>audio.pause()),previoustrack:act("previous",playPrevious),nexttrack:act("next",()=>playNext(false))};
   for(const[a,fn]of Object.entries(h)){try{navigator.mediaSession.setActionHandler(a,fn)}catch{}}
   for(const a of ["seekbackward","seekforward"]){try{navigator.mediaSession.setActionHandler(a,null)}catch{}}

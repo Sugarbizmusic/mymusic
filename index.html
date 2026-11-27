@@ -5,7 +5,7 @@
 <link rel="icon" type="image/png" href="./logo-192.png"><link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@300;400;700&display=swap" rel="stylesheet">
-<link rel="manifest" href="./manifest.webmanifest"><link rel="stylesheet" href="./styles.css?v=1.9.41"><title>Hi-Fi45</title><meta name="application-name" content="Hi-Fi45"><meta name="apple-mobile-web-app-title" content="Hi-Fi45">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="stylesheet" href="./styles.css?v=1.9.42"><title>Hi-Fi45</title><meta name="application-name" content="Hi-Fi45"><meta name="apple-mobile-web-app-title" content="Hi-Fi45">
 </head><body>
 <header>
   <div class="brand">
@@ -58,7 +58,7 @@
       <button type="button" id="folderClose" class="folder-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div id="breadcrumbs" class="breadcrumbs"></div>
-    <div id="orderBar" class="order-bar"><button type="button" id="shuffleBtn" class="outline small-btn" aria-pressed="false">🔀 Shuffle</button><button type="button" id="orderBtn" class="outline small-btn order-btn">Edit order</button><button type="button" id="orderResetBtn" class="order-reset" hidden>Reset to A–Z</button></div>
+    <div id="orderBar" class="order-bar"><button type="button" id="orderBtn" class="outline small-btn order-btn">Edit order</button><button type="button" id="orderResetBtn" class="order-reset" hidden>Reset to A–Z</button></div>
     <div id="browseMsg" class="browse-msg" role="status" hidden></div>
     <input id="pickerSearch" class="search picker-search" type="search" placeholder="Search songs" hidden>
     <div id="folderList" class="folder-list"></div>
@@ -100,6 +100,7 @@
     <span class="eyebrow player-eyebrow">NOW PLAYING</span>
     <div class="player-top-actions">
       <button type="button" id="expandedBrowseBtn" class="outline small-btn expanded-only" aria-haspopup="dialog">📁 Browse folders</button>
+      <button type="button" id="shuffleBtn" class="icon-btn" aria-label="Shuffle this folder" title="Shuffle this folder" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3h4v4"/><path d="M3 20 20.5 3.5"/><path d="M21 16v4h-4"/><path d="M3 4l5 5"/><path d="M14 14l6.5 6.5"/></svg></button>
       <button type="button" id="shareTrackBtn" class="icon-btn" aria-label="Copy link to this song" title="Copy link to this song"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 0 0 4.24 0l3-3a3 3 0 0 0-4.24-4.24l-1 .99"/><path d="M15 12a3 3 0 0 0-4.24 0l-3 3a3 3 0 0 0 4.24 4.24l1-.99"/></svg></button>
       <button type="button" id="popoutBtn" class="icon-btn" aria-label="Pop out player" title="Pop out into its own window" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-8.5 8.5"/><path d="M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/></svg></button>
       <button type="button" id="expandBtn" class="icon-btn" aria-label="Expand player" aria-expanded="false" title="Expand player"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button>
@@ -152,7 +153,7 @@
         <img src="./vu-meter.png" alt="" class="vu-face" draggable="false">
         <svg class="vu-needle" viewBox="0 0 870 471" preserveAspectRatio="none"><defs><clipPath id="vuClip"><rect x="70" y="74" width="722" height="322" rx="4"/></clipPath></defs><g clip-path="url(#vuClip)"><line id="vuNeedleShadow" x1="412" y1="445" x2="412" y2="148" stroke="rgba(60,20,0,.28)" stroke-width="5" stroke-linecap="round"/><line id="vuNeedleLine" x1="408" y1="445" x2="408" y2="148" stroke="#20130c" stroke-width="3.6" stroke-linecap="round"/></g></svg>
       </div>
-      <span class="version">ALPHA 1.9.41</span>
+      <span class="version">ALPHA 1.9.42</span>
       </div>
     </div>
     <div class="player-footer">
@@ -160,7 +161,7 @@
     </div>
   </div>
 </section>
-<audio id="audio" preload="metadata"></audio><audio id="audio2" preload="auto"></audio><script src="https://accounts.google.com/gsi/client" async defer></script><script src="./app.js?v=1.9.41"></script>
+<audio id="audio" preload="metadata"></audio><audio id="audio2" preload="auto"></audio><script src="https://accounts.google.com/gsi/client" async defer></script><script src="./app.js?v=1.9.42"></script>
 <div class="hw-preload" aria-hidden="true"></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="ink" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceGraphic" stdDeviation=".28" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs></svg>
 </body></html>
