@@ -167,3 +167,7 @@ Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9
 
 ### Alpha 1.9.40 — Shuffle
 Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9.40. A Shuffle button now sits next to Edit order in Browse folders.
+
+
+### Alpha 1.9.41 — fixes the "Failed to fetch" / every-song-fails bug
+Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9.41. A track download that drops at the network level now retries once before giving up; if it keeps failing, the alert now says it looks like a connection problem instead of a generic error.

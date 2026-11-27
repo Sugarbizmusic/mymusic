@@ -1,9 +1,11 @@
-// Hi-Fi45 Alpha 1.9.40 — a Shuffle toggle for Browse folders, shuffling playback order within the current folder without touching its saved custom order.
+// Hi-Fi45 Alpha 1.9.41 — a flaky-connection fix: a track download that fails at the network level (a dropped
+// signal, a cell-tower handoff mid-drive) now retries once automatically before giving up, and the "couldn't
+// be loaded" alert now says plainly when it looks like a connection problem rather than an app problem.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 
 // ---- Event log (1.9.27): last 400 events kept in localStorage. Open it from the ⋯ menu, or HiFi45App.getLog() ----
-const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.40";let logBuf=[];
+const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.41";let logBuf=[];
 try{logBuf=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");if(!Array.isArray(logBuf))logBuf=[]}catch{logBuf=[]}
 // entry: [time, tag, message, V/H (page visible/hidden), repeat count, last time, collapse key]
 function hlog(tag,msg="",key){try{const now=Date.now(),vis=document.visibilityState==="hidden"?"H":"V";msg=String(msg).slice(0,220);
@@ -800,8 +802,20 @@ window.HiFi45App=window.Drive45App=window.MyMusicApp=Object.freeze({
 });
 async function downloadFile(id,kind="song",signal){
   const t0=Date.now(),sid=`${kind} ${String(id).slice(0,8)}`,ck=kind+id;hlog("dl-start",sid,"dls"+ck);
-  let r;try{r=await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`,{headers:{Authorization:`Bearer ${accessToken}`},signal})}
-  catch(e){if(e&&e.name==="AbortError"){hlog("dl-cancelled",sid,"dlc"+ck);throw e}hlog("dl-fail",`${sid} network error: ${e&&e.message} after ${Date.now()-t0} ms`,"dlf"+ck);throw e}
+  const doFetch=()=>fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`,{headers:{Authorization:`Bearer ${accessToken}`},signal});
+  let r;
+  try{r=await doFetch()}
+  catch(e){
+    // 1.9.41: a bare "Failed to fetch" here is the browser's generic network-layer failure (dropped
+    // connection, DNS hiccup, a momentary cell handoff — common in a moving car) rather than anything
+    // the app did wrong. One quick retry clears most of these instead of failing the whole track.
+    if(e&&e.name==="AbortError"){hlog("dl-cancelled",sid,"dlc"+ck);throw e}
+    hlog("dl-retry",`${sid} network error: ${e&&e.message} — retrying once`,"dlr"+ck);
+    await new Promise(res=>setTimeout(res,900));
+    if(signal&&signal.aborted){hlog("dl-cancelled",sid,"dlc"+ck);throw new DOMException("aborted","AbortError")}
+    try{r=await doFetch()}
+    catch(e2){if(e2&&e2.name==="AbortError"){hlog("dl-cancelled",sid,"dlc"+ck);throw e2}hlog("dl-fail",`${sid} network error (after retry): ${e2&&e2.message} after ${Date.now()-t0} ms`,"dlf"+ck);throw e2}
+  }
   if(r.status===401){hlog("dl-fail",`${sid} status 401 (sign-in expired)`,"dlf"+ck);authExpired();throw new Error("Drive authorization expired. Please reconnect.")}
   if(!r.ok){let why="";try{why=((await r.text()).match(/"reason":\s*"([^"]+)"/)||[])[1]||""}catch{}hlog("dl-fail",`${sid} status ${r.status} ${why} after ${Date.now()-t0} ms`,"dlf"+ck);throw new Error(`Couldn't download file (${r.status})`)}
   try{const b=await r.blob();if(signal&&signal.aborted){hlog("dl-cancelled",sid,"dlc"+ck);throw new DOMException("aborted","AbortError")}hlog("dl-ok",`${sid} ${(b.size/1048576).toFixed(1)} MB in ${Date.now()-t0} ms`);return b}
@@ -890,7 +904,7 @@ async function _playTrackById(id,opts={}){const idx=queue.findIndex(t=>t.id===id
     const blobPromise=already?Promise.resolve(already):downloadFile(t.id,"song",sig);let [blob]=await Promise.all([blobPromise,loadArtwork(t).catch(err=>{console.warn("Artwork unavailable",err)})]);const T1=Date.now();if(gen!==playGen){hlog("track-superseded",`${i.title} | you moved on before it finished`,"sup");return}currentRaw={id:t.id,blob};blob=await levelBlob(t.id,blob);const T2=Date.now();if(gen!==playGen){hlog("track-superseded",`${i.title} | you moved on before it finished`,"sup");return}if(levelBusyId===t.id)levelBusyId=null;updateLevelReadout();if(currentObjectUrl)URL.revokeObjectURL(currentObjectUrl);currentObjectUrl=URL.createObjectURL(blob);audio.src=currentObjectUrl;audio.load();await audio.play();hlog("track-play",`${i.title} | download ${T1-T0} ms, level ${T2-T1} ms, total ${Date.now()-T0} ms`);if(!prefetchedNextId&&!standbyTrackId)prefetchNextTrack();hideResumePrompt();if(!opts.noHistory)pushHistory(t.id);setStatus("Playing");renderTracks();updateMediaSession(t,i)}catch(e){console.error(e);if(levelBusyId===t.id)levelBusyId=null;updateLevelReadout();
   if((e&&e.name==="AbortError")||gen!==playGen){hlog("track-cancelled",`${i.title} | replaced by a newer choice`,"canc");return}
   if(e&&e.name==="NotAllowedError"){hlog("play-needs-tap",`${i.title} | iPhone refused to autostart after ${Date.now()-T0} ms; song is loaded`);setPlayIcon("play");setStatus("Ready · tap play to start");hideResumePrompt();if(!opts.noHistory)pushHistory(t.id);renderTracks();updateMediaSession(t,i);return}
-  hlog("track-fail",`${i.title} | ${e&&e.message} after ${Date.now()-T0} ms`);setPlayIcon("play");if(!tokenValid()){setStatus("Drive sign-in expired · tap to continue");showResumePrompt(id)}else{setStatus("Playback unavailable");alert(`This track couldn't be loaded.\n\n${e.message}`)}}}
+  hlog("track-fail",`${i.title} | ${e&&e.message} after ${Date.now()-T0} ms`);setPlayIcon("play");if(!tokenValid()){setStatus("Drive sign-in expired · tap to continue");showResumePrompt(id)}else{setStatus("Playback unavailable");const netIssue=e&&/Failed to fetch|network error/i.test(e.message||"");alert(netIssue?"This track couldn't load — looks like a weak or dropped connection.\n\nCheck your signal and try again.":`This track couldn't be loaded.\n\n${e.message}`)}}}
 function updateMediaSession(t,i){if(!("mediaSession"in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:i.title,artist:i.artist,album:i.release,artwork:currentArtDataUrl?[{src:currentArtDataUrl,sizes:"512x512",type:"image/jpeg"}]:[]});setMediaSessionState();const act=(name,fn)=>()=>{hlog("media-button",`${name} | was ${audio.paused?"paused":"playing"} at ${formatTime(audio.currentTime)}`);return fn()};
   const h={play:act("play",()=>audio.play().catch(e=>hlog("media-button-fail",`play ${e&&e.name}`))),pause:act("pause",()=>audio.pause()),previoustrack:act("previous",playPrevious),nexttrack:act("next",()=>playNext(false))};
   for(const[a,fn]of Object.entries(h)){try{navigator.mediaSession.setActionHandler(a,fn)}catch{}}
