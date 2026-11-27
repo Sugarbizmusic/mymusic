@@ -1,11 +1,11 @@
-// Hi-Fi45 Alpha 1.9.43 — the event log showed track downloads actually dying mid-stream (a connection
-// dropping partway through, not just failing to connect); the retry added in 1.9.41 only covered a failed
-// connect, so it never caught this. Now the whole download — connect and read — retries as one unit.
+// Hi-Fi45 Alpha 1.9.44 — the failures only ever hit the library's two biggest files; a flaky connection is
+// just more likely to drop during a long transfer than a short one. Downloads now resume with an HTTP
+// Range request from the last byte received on a drop, instead of discarding progress and starting over.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 
 // ---- Event log (1.9.27): last 400 events kept in localStorage. Open it from the ⋯ menu, or HiFi45App.getLog() ----
-const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.43";let logBuf=[];
+const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.44";let logBuf=[];
 try{logBuf=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");if(!Array.isArray(logBuf))logBuf=[]}catch{logBuf=[]}
 // entry: [time, tag, message, V/H (page visible/hidden), repeat count, last time, collapse key]
 function hlog(tag,msg="",key){try{const now=Date.now(),vis=document.visibilityState==="hidden"?"H":"V";msg=String(msg).slice(0,220);
@@ -622,7 +622,7 @@ function setQueueForFolder(list){
   queue=(shuffleOn&&shuffleFolderId===folderId)?shuffleArray(ordered):ordered;
   currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null;clearStandby("new folder");
 }
-// 1.9.43: the Shuffle control lives on the Now Playing panel, which can be on screen whether or not the
+// 1.9.44: the Shuffle control lives on the Now Playing panel, which can be on screen whether or not the
 // Browse folders list is open — so it keys off whatever's actually playing first, rather than requiring
 // a fresh browseItems cache for currentFolderId. It falls back to the browsed folder only when nothing's
 // playing yet (e.g. shuffling before the first tap).
@@ -814,30 +814,39 @@ window.HiFi45App=window.Drive45App=window.MyMusicApp=Object.freeze({
 });
 async function downloadFile(id,kind="song",signal){
   const t0=Date.now(),sid=`${kind} ${String(id).slice(0,8)}`,ck=kind+id;hlog("dl-start",sid,"dls"+ck);
-  // 1.9.43: the event log from the field showed "Failed to fetch" wasn't happening at connect time — it was
-  // happening a second or two IN, while the body was still streaming down (logged as "dropped while
-  // downloading"), i.e. a wifi/cell link dropping mid-transfer. 1.9.41's retry only covered a failed connect,
-  // so it never fired for this. Now the whole fetch-and-read is retried as one unit, up to 3 attempts total,
-  // for any network-level failure at either stage — that's what actually clears a mid-download drop.
-  const MAX_TRIES=3;
+  const url=`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`;
+  // 1.9.44: the field event log showed the handful of failures all land on the library's two BIGGEST files
+  // (20+ MB) — every smaller file succeeds on the first try, every time. A connection that's briefly flaky
+  // is far more likely to hit a long multi-second transfer than a quick one. 1.9.44's retry still restarted
+  // each failed file from byte zero, so a drop late into a big download kept losing all the progress it had
+  // made. This now reads the body manually and, on a drop, resumes with an HTTP Range request for just the
+  // remaining bytes instead of starting over — so partial progress survives across retries.
+  const MAX_TRIES=5;
+  let chunks=[],received=0,mime="";
   for(let attempt=1;attempt<=MAX_TRIES;attempt++){
     try{
-      const r=await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`,{headers:{Authorization:`Bearer ${accessToken}`},signal});
+      const headers={Authorization:`Bearer ${accessToken}`};
+      if(received>0)headers.Range=`bytes=${received}-`;
+      const r=await fetch(url,{headers,signal});
       if(r.status===401){hlog("dl-fail",`${sid} status 401 (sign-in expired)`,"dlf"+ck);authExpired();const e=new Error("Drive authorization expired. Please reconnect.");e.noRetry=true;throw e}
-      if(!r.ok){let why="";try{why=((await r.text()).match(/"reason":\s*"([^"]+)"/)||[])[1]||""}catch{}hlog("dl-fail",`${sid} status ${r.status} ${why} after ${Date.now()-t0} ms`,"dlf"+ck);const e=new Error(`Couldn't download file (${r.status})`);e.noRetry=true;throw e}
-      const b=await r.blob();
+      if(!r.ok&&r.status!==206){let why="";try{why=((await r.text()).match(/"reason":\s*"([^"]+)"/)||[])[1]||""}catch{}hlog("dl-fail",`${sid} status ${r.status} ${why} after ${Date.now()-t0} ms`,"dlf"+ck);const e=new Error(`Couldn't download file (${r.status})`);e.noRetry=true;throw e}
+      if(r.status!==206&&received>0){chunks=[];received=0} // server didn't honor the Range request: start clean rather than risk duplicated bytes
+      if(r.headers.get("content-type"))mime=r.headers.get("content-type");
+      const reader=r.body.getReader();
+      while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);received+=value.length}
       if(signal&&signal.aborted){hlog("dl-cancelled",sid,"dlc"+ck);throw new DOMException("aborted","AbortError")}
-      hlog("dl-ok",`${sid} ${(b.size/1048576).toFixed(1)} MB in ${Date.now()-t0} ms`);
+      const b=new Blob(chunks,mime?{type:mime}:undefined);
+      hlog("dl-ok",`${sid} ${(b.size/1048576).toFixed(1)} MB in ${Date.now()-t0} ms${attempt>1?` (resumed after ${attempt-1} drop${attempt>2?"s":""})`:""}`);
       return b;
     }catch(e){
       if((e&&e.name==="AbortError")||(signal&&signal.aborted)){hlog("dl-cancelled",sid,"dlc"+ck);throw(e&&e.name==="AbortError")?e:new DOMException("aborted","AbortError")}
       if(e&&e.noRetry)throw e;
       if(attempt<MAX_TRIES){
-        hlog("dl-retry",`${sid} attempt ${attempt} dropped: ${e&&e.message} — retrying`,"dlr"+ck);
-        await new Promise(res=>setTimeout(res,900*attempt));
+        hlog("dl-retry",`${sid} attempt ${attempt} dropped at ${(received/1048576).toFixed(1)} MB: ${e&&e.message} — resuming`,"dlr"+ck);
+        await new Promise(res=>setTimeout(res,600*attempt));
         continue;
       }
-      hlog("dl-fail",`${sid} gave up after ${attempt} attempts: ${e&&e.message} after ${Date.now()-t0} ms`,"dlf"+ck);
+      hlog("dl-fail",`${sid} gave up after ${attempt} attempts (had ${(received/1048576).toFixed(1)} MB): ${e&&e.message} after ${Date.now()-t0} ms`,"dlf"+ck);
       throw e;
     }
   }

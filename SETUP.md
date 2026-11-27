@@ -179,3 +179,7 @@ Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9
 
 ### Alpha 1.9.43 — real fix for "Failed to fetch" (mid-download drops)
 Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9.43. The 1.9.41 retry only covered a failed connect; the event log showed the actual failure was a connection dropping partway through the download. The whole download now retries as one unit (up to 3 attempts) so a mid-transfer drop is recovered too.
+
+
+### Alpha 1.9.44 — downloads resume instead of restarting on a drop
+Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9.44. Failures only ever hit the two biggest files in the library, since a brief hiccup is more likely to land during a long transfer. A dropped download now resumes with an HTTP Range request from the last byte received (up to 5 attempts) instead of restarting from zero each time.
