@@ -1,3 +1,10 @@
+## Alpha 1.9.39
+- Cover art sent to the car/lock screen is now resized and compressed to a small 512x512 JPEG before it's handed to MediaSession, instead of the original image at whatever size and aspect ratio it came in at. The car gets cover art over Bluetooth (AVRCP), which is much stricter about image size/format than the iPhone's own lock screen — a big or non-square image can work fine on the lock screen and simply never arrive at the car. The event log now also records the before/after size each time, so if art still doesn't show up in the car after this, the log will say exactly what was sent.
+
+## Alpha 1.9.38
+- Added a "copy link to this song" button: a small link icon on every track row (Browse folders, All songs, Recent) and one on the Now Playing screen. Tapping it copies a shareable link to the clipboard and briefly turns the icon green to confirm.
+- Opening a shared song link now auto-adds the library if needed (same as the existing library share links) and cues up that specific song in its folder's order, ready to play — if the browser won't auto-start it (common on a cold open), it's loaded and waiting for a tap on Play, same as the existing "tap to resume" behavior elsewhere in the app.
+
 ## Alpha 1.9.37
 - The "How it works" guide's "How to set up your own Drive folder" topic now mentions dropping a square cover image into a folder — this was already supported by the app (any JPG/PNG/WEBP image in a song's folder becomes that folder's cover art), it just wasn't documented anywhere until now.
 

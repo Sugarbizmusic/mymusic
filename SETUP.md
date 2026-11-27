@@ -155,3 +155,11 @@ Replace index.html, app.js, styles.css and sw.js (the rest are unchanged), reloa
 
 ### Alpha 1.9.37 — cover-art note added to the guide
 Text-only change to the "How it works" guide. Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9.37.
+
+
+### Alpha 1.9.38 — copy link to a song
+Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9.38. New share icons appear on track rows and the Now Playing screen; links look like ?lib=<folderId>&play=<songId>.
+
+
+### Alpha 1.9.39 — cover art resized for the car
+Replace index.html, app.js, styles.css and sw.js, reload once, confirm ALPHA 1.9.39.

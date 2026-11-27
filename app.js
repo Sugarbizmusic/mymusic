@@ -1,9 +1,9 @@
-// Hi-Fi45 Alpha 1.9.37 — noted the per-folder cover-art image in the "How it works" guide.
+// Hi-Fi45 Alpha 1.9.39 — resize/compress cover art to a small square JPEG before it goes to MediaSession, since Bluetooth AVRCP (the car's cover-art path) is much stricter than the lock screen about image size and aspect ratio.
 const CONFIG={CLIENT_ID:"249160747385-th1vq4sp43pjk40vle5jrnojd965morb.apps.googleusercontent.com",ROOT_FOLDER_ID:"1cdOpz-ziw1JcrtHaQupqnDMRZzviUiCJ"};
 const SUPPORTED=new Set(["mp3","wav","m4a","aac","flac","mp4"]);
 
 // ---- Event log (1.9.27): last 400 events kept in localStorage. Open it from the ⋯ menu, or HiFi45App.getLog() ----
-const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.37";let logBuf=[];
+const LOG_KEY="hifi45_log_v1",LOG_MAX=400,APP_VERSION="1.9.39";let logBuf=[];
 try{logBuf=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");if(!Array.isArray(logBuf))logBuf=[]}catch{logBuf=[]}
 // entry: [time, tag, message, V/H (page visible/hidden), repeat count, last time, collapse key]
 function hlog(tag,msg="",key){try{const now=Date.now(),vis=document.visibilityState==="hidden"?"H":"V";msg=String(msg).slice(0,220);
@@ -87,7 +87,7 @@ function armStandby(id,playBlob,rawBlob){
   }catch(e){hlog("standby-failed",`${String(id).slice(0,8)} ${e&&e.message}`);clearStandby("arm failed")}
 }
 const canSwapTo=id=>!!id&&standbyTrackId===id&&!!standbyObjectUrl&&otherAudio().src===standbyObjectUrl&&otherAudio().readyState>=3;
-let tokenClient=null,accessToken=null,tracks=[],queue=[],currentIndex=-1,currentObjectUrl=null,standbyObjectUrl=null,currentArtUrl=null,currentFolderId=CONFIG.ROOT_FOLDER_ID,currentFolderPath=[],folderStack=[{id:CONFIG.ROOT_FOLDER_ID,name:"MyMusic"}],scanBusy=false,authPending=false,allSongsMode=false,recentMode=false,pickerMode="folders",tokenExpiresAt=0,pendingActions=[],pendingResumeTrackId=null;
+let tokenClient=null,accessToken=null,tracks=[],queue=[],currentIndex=-1,currentObjectUrl=null,standbyObjectUrl=null,currentArtUrl=null,currentFolderId=CONFIG.ROOT_FOLDER_ID,currentFolderPath=[],folderStack=[{id:CONFIG.ROOT_FOLDER_ID,name:"MyMusic"}],scanBusy=false,authPending=false,allSongsMode=false,recentMode=false,pickerMode="folders",tokenExpiresAt=0,pendingActions=[],pendingResumeTrackId=null,pendingShareTrackId=null;
 let gainCache=new Map(),levelEnabled=false,prefetchedNextId=null,prefetchedBlob=null,currentArtDataUrl=null;
 const LEVEL_KEY="mymusic_level_v1",TARGET_RMS=0.14;
 const extOf=n=>String(n).split(".").pop().toLowerCase();
@@ -150,12 +150,64 @@ function isDefaultLib(){return ROOT()===CONFIG.ROOT_FOLDER_ID}
 function libCacheKey(id){return id===CONFIG.ROOT_FOLDER_ID?"mymusic_library_v1":"hifi45_library_"+id}
 function parseFolderId(text){const t=String(text||"").trim();let m=t.match(/\/folders\/([-\w]{10,})/)||t.match(/[?&](?:id|lib)=([-\w]{10,})/);if(m)return m[1];if(/^[-\w]{10,}$/.test(t))return t;return null}
 function shareUrl(id){return location.origin+location.pathname+"?lib="+encodeURIComponent(id)}
+// 1.9.38: share one song. The link always carries ?lib= too (harmless if the recipient already has that
+// library) so it works whether they've added this folder before or not.
+function songShareUrl(t){return location.origin+location.pathname+"?lib="+encodeURIComponent(ROOT())+"&play="+encodeURIComponent(t.id)}
+async function copyToClipboard(text){
+  try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);return true}}catch{}
+  try{ // fallback for the rare browser without the Clipboard API; still only ever runs from a direct tap
+    const ta=document.createElement("textarea");ta.value=text;ta.style.cssText="position:fixed;opacity:0;left:-9999px";
+    (document.body||document.documentElement).appendChild(ta);ta.focus();ta.select();
+    const ok=document.execCommand("copy");ta.remove();return ok;
+  }catch{return false}
+}
+function flashCopyFeedback(el,ok){
+  if(!el)return;
+  el.classList.toggle("copied",!!ok);el.classList.toggle("copy-failed",!ok);
+  const label=ok?"Link copied":"Couldn't copy link";
+  const prevLabel=el.getAttribute("aria-label");el.setAttribute("aria-label",label);el.title=label;
+  setTimeout(()=>{el.classList.remove("copied","copy-failed");if(prevLabel){el.setAttribute("aria-label",prevLabel);el.title=prevLabel}},1400);
+}
+const SHARE_ICON_SVG='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a3 3 0 0 0 4.24 0l3-3a3 3 0 0 0-4.24-4.24l-1 .99"/><path d="M15 12a3 3 0 0 0-4.24 0l-3 3a3 3 0 0 0 4.24 4.24l1-.99"/></svg>';
+function shareIconSpan(id){return`<span class="track-share-btn" role="button" tabindex="0" aria-label="Copy link to this song" title="Copy link to this song" data-share="${esc(id)}">${SHARE_ICON_SVG}</span>`}
+function wireShareButtons(root){
+  (root||document).querySelectorAll(".track-share-btn").forEach(b=>{
+    const go=e=>{e.stopPropagation();e.preventDefault();const t=tracks.find(x=>x.id===b.dataset.share);if(t)shareTrackLink(t,b)};
+    b.onclick=go;b.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){go(e)}};
+  });
+}
+function shareTrackLink(t,el){
+  const url=songShareUrl(t),i=trackInfo(t);
+  copyToClipboard(url).then(ok=>{flashCopyFeedback(el,ok);hlog(ok?"share-copied":"share-copy-failed",i.title)});
+}
+// Opening someone's shared-song link: find the track in the (by-then-loaded) library, cue its whole
+// folder in order just like tapping it in Browse folders would, and let playTrackById's existing
+// autoplay-blocked handling take it from there if the browser won't allow autostart yet.
+function playSharedTrack(trackId){
+  const t=tracks.find(x=>x.id===trackId);
+  if(!t)return false;
+  const local=tracks.filter(x=>x.parentId===t.parentId);
+  folderStack=[{id:ROOT(),name:curLib().name},...(t.path||[]).map((name,i)=>({id:(t.pathIds&&t.pathIds[i])||name,name}))];
+  currentFolderId=t.parentId;currentFolderPath=t.path||[];allSongsMode=false;recentMode=false;
+  setQueueForFolder(local);
+  hlog("share-link-play",`${trackInfo(t).title} | opened from a shared link`);
+  playTrackById(t.id);
+  return true;
+}
+function tryPendingShare(){
+  if(!pendingShareTrackId)return;
+  const id=pendingShareTrackId;pendingShareTrackId=null;
+  if(!playSharedTrack(id))hlog("share-link-miss",`shared track ${String(id).slice(0,8)} wasn't found in this library`);
+}
 (function loadLibraries(){
   try{libraries=(JSON.parse(localStorage.getItem(LIBS_KEY)||"[]")||[]).filter(l=>l&&l.id)}catch{libraries=[]}
   try{currentLibId=localStorage.getItem(CUR_LIB_KEY)||null}catch{}
-  const shared=parseFolderId(new URLSearchParams(location.search).get("lib"));
-  if(shared){if(!libraries.some(l=>l.id===shared))libraries.push({id:shared,name:"Shared library",addedAt:Date.now(),pending:true});currentLibId=shared;sharedLibArrived=true;
-    try{const u=new URL(location.href);u.searchParams.delete("lib");history.replaceState(null,"",u.pathname+u.search+u.hash)}catch{}}
+  const params=new URLSearchParams(location.search);
+  const shared=parseFolderId(params.get("lib"));
+  if(shared){if(!libraries.some(l=>l.id===shared))libraries.push({id:shared,name:"Shared library",addedAt:Date.now(),pending:true});currentLibId=shared;sharedLibArrived=true}
+  const sharedTrack=params.get("play");
+  if(sharedTrack)pendingShareTrackId=sharedTrack; // 1.9.38: deep link to one song — consumed once its library's tracks are loaded, see tryPendingShare()
+  if(shared||sharedTrack){try{const u=new URL(location.href);u.searchParams.delete("lib");u.searchParams.delete("play");history.replaceState(null,"",u.pathname+u.search+u.hash)}catch{}}
   if(!libraries.length)libraries.push({id:CONFIG.ROOT_FOLDER_ID,name:"MyMusic",addedAt:Date.now()});
   if(!libraries.some(l=>l.id===currentLibId))currentLibId=libraries[0].id;
   saveLibraries();
@@ -404,10 +456,10 @@ function initAuth(){if(!window.google?.accounts?.oauth2){setTimeout(initAuth,250
 tokenClient=google.accounts.oauth2.initTokenClient({client_id:CONFIG.CLIENT_ID,scope:"https://www.googleapis.com/auth/drive.readonly",
 callback:async r=>{authPending=false;hlog(r.error?"token-error":"token-ok",r.error?`${r.error} ${r.error_description||""}`:`new token, ${Math.round((Number(r.expires_in)||3600)/60)} min`);if(r.error){if(scopeWaiter){scopeWaiter.rej(new Error("Drive edit permission wasn't granted"));scopeWaiter=null}if(tokenValid()){flushPending(new Error("Authorization cancelled"));return}authExpired("Drive connection needs attention. Please reconnect.");flushPending(new Error("Drive authorization failed"));return}
 accessToken=r.access_token;tokenExpiresAt=Date.now()+(Number(r.expires_in)||3600)*1000;if(r.scope)grantedScopes=r.scope;saveToken();if(scopeWaiter){const w=scopeWaiter;scopeWaiter=null;hasWriteScope()?w.res():w.rej(new Error("Drive edit permission wasn't granted"))}try{localStorage.setItem(AUTH_KEY,"yes")}catch{}
-showConnected();setStatus(tracks.length?`Connected · ${tracks.length} tracks`:"Connected");flushPending();if(!tracks.length||needsRescan())await scanLibrary();else refreshOrder()},
+showConnected();setStatus(tracks.length?`Connected · ${tracks.length} tracks`:"Connected");flushPending();if(!tracks.length||needsRescan())await scanLibrary();else{refreshOrder();tryPendingShare()}},
 error_callback:e=>{authPending=false;hlog("token-popup-failed",e&&(e.type||e.message)||"");if(scopeWaiter){scopeWaiter.rej(new Error("The permission window was closed"));scopeWaiter=null}console.warn("Google sign-in",e);flushPending(new Error("Sign-in window was closed or blocked"));if(!tokenValid())showConnectScreen(tracks.length?"Tap a track or Reconnect to resume":undefined)}});
 loadOrderCache();const hadLib=loadLibrary();if(hadLib){tracks=allSongsSort(tracks);queue=[...tracks];formatCounts();renderTracks()}
-if(loadToken()){showConnected();setStatus(hadLib?`Connected · ${tracks.length} tracks`:"Connected");if(!hadLib||needsRescan())scanLibrary();else refreshOrder();return}
+if(loadToken()){showConnected();setStatus(hadLib?`Connected · ${tracks.length} tracks`:"Connected");if(!hadLib||needsRescan())scanLibrary();else{refreshOrder();tryPendingShare()}return}
 let authorized=false;try{authorized=localStorage.getItem(AUTH_KEY)==="yes"}catch{}
 if(authorized&&hadLib)showConnectScreen("Tap a track or Reconnect to resume");else if(authorized)showConnectScreen("Tap Reconnect Drive to continue");else showConnectScreen()}
 function connectDrive(){if(tokenValid()){showConnected();return}let authorized=false;try{authorized=localStorage.getItem(AUTH_KEY)==="yes"}catch{}requestToken(!authorized)}
@@ -550,8 +602,9 @@ function renderPickerList(){
   const term=$("pickerSearch").value.trim().toLowerCase();
   const list=pickerSongs().filter(t=>{const i=trackInfo(t);return`${i.title} ${i.artist} ${i.release}`.toLowerCase().includes(term)});
   const cur=queue[currentIndex]?.id;
-  $("folderList").innerHTML=list.length?list.map(t=>{const i=trackInfo(t);return`<button type="button" class="folder-track${t.id===cur?" current":""}" data-id="${esc(t.id)}"><span>♫</span><span class="ft-text"><span class="ft-title">${esc(i.title)}</span><span class="ft-meta">${esc(i.subtitle)}</span></span><span>▶</span></button>`}).join(""):`<div class="folder-empty">${pickerMode==="recent"&&!term?"No recent songs yet. Play something and it will show up here.":"No matching songs."}</div>`;
+  $("folderList").innerHTML=list.length?list.map(t=>{const i=trackInfo(t);return`<button type="button" class="folder-track${t.id===cur?" current":""}" data-id="${esc(t.id)}"><span>♫</span><span class="ft-text"><span class="ft-title">${esc(i.title)}</span><span class="ft-meta">${esc(i.subtitle)}</span></span>${shareIconSpan(t.id)}<span>▶</span></button>`}).join(""):`<div class="folder-empty">${pickerMode==="recent"&&!term?"No recent songs yet. Play something and it will show up here.":"No matching songs."}</div>`;
   $("folderList").querySelectorAll(".folder-track").forEach(b=>b.onclick=()=>{allSongsMode=pickerMode==="all";recentMode=pickerMode==="recent";queue=[...list];currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null;clearStandby("new list");playTrackById(b.dataset.id);closeFolderModal()});
+  wireShareButtons($("folderList"));
 }
 function markPickerCurrent(){const cur=queue[currentIndex]?.id;($("folderList")?$("folderList").querySelectorAll(".folder-track"):[]).forEach(b=>b.classList.toggle("current",b.dataset.id===cur))}
 function closeFolderModal(){if(orderEditing)stopOrderEditUI();browseMsg("");$("folderModal").hidden=true;["folderToggle","allSongsBtn","recentBtn"].forEach(id=>{const b=$(id);if(b)b.setAttribute("aria-expanded","false")});$("folderModal").ownerDocument.body.classList.remove("folder-modal-open")}
@@ -559,11 +612,11 @@ function togglePlayerExpand(force){const next=typeof force==="boolean"?force:!do
 async function navigateTo(depth){if(orderEditing)stopOrderEditUI();browseMsg("");allSongsMode=false;recentMode=false;folderStack=folderStack.slice(0,depth+1);currentFolderId=folderStack.at(-1).id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
 async function enterFolder(f){if(orderEditing)stopOrderEditUI();browseMsg("");allSongsMode=false;recentMode=false;folderStack.push({id:f.id,name:f.name});currentFolderId=f.id;currentFolderPath=folderStack.slice(1).map(x=>x.name);await renderFolderContents();renderTracks()}
 function renderFolderContents(){renderBreadcrumbs();$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';return withToken(_renderFolderContents).catch(e=>{$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)} · tap Reconnect Drive</div>`})}
-async function _renderFolderContents(){$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';try{const items=await driveList(currentFolderId);const dirs=orderSort(currentFolderId,items.filter(f=>f.mimeType==="application/vnd.google-apps.folder"||(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")),dirTargetId);const local=items.filter(f=>SUPPORTED.has(extOf(f.name))).map(f=>({...f,path:currentFolderPath,parentId:currentFolderId,extension:extOf(f.name)}));const localSorted=orderSort(currentFolderId,local);local.length=0;local.push(...localSorted);browseItems={folderId:currentFolderId,dirs,local};const rows=dirs.map(f=>`<button type="button" class="folder-row" data-group="dir" data-id="${esc(dirTargetId(f))}" data-name="${esc(f.name)}"><span class="drag-handle" aria-hidden="true"></span><span class="folder-icon">📁</span><span class="folder-label">${esc(f.name)}</span><span class="folder-count">Open ›</span></button>`).join("");$("folderList").innerHTML=(rows||'')+(local.length?`<div class="folder-section-label">TRACKS IN THIS FOLDER</div>`+local.map(t=>`<button type="button" class="folder-track${queue[currentIndex]?.id===t.id?" current":""}" data-group="track" data-id="${esc(t.id)}"><span class="drag-handle" aria-hidden="true"></span><span class="ft-note">♫</span><span class="track-title">${esc(trackInfo(t).title)}</span><span>▶</span></button>`).join(""):'')||'<div class="folder-empty">This folder is empty.</div>';$("folderList").querySelectorAll(".folder-row").forEach(b=>b.onclick=()=>{if(orderEditing)return;enterFolder({id:b.dataset.id,name:b.dataset.name})});$("folderList").querySelectorAll(".folder-track").forEach(b=>b.onclick=()=>{if(orderEditing)return;setQueueForFolder(local);playTrackById(b.dataset.id);closeFolderModal()});if($("folderSummary"))$("folderSummary").textContent=`${dirs.length} folders · ${local.length} tracks`;setupOrderEditing()}catch(e){console.error(e);$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)}</div>`}}
+async function _renderFolderContents(){$("folderList").innerHTML='<div class="folder-empty">Loading folder…</div>';try{const items=await driveList(currentFolderId);const dirs=orderSort(currentFolderId,items.filter(f=>f.mimeType==="application/vnd.google-apps.folder"||(f.mimeType==="application/vnd.google-apps.shortcut"&&f.shortcutDetails?.targetMimeType==="application/vnd.google-apps.folder")),dirTargetId);const local=items.filter(f=>SUPPORTED.has(extOf(f.name))).map(f=>({...f,path:currentFolderPath,parentId:currentFolderId,extension:extOf(f.name)}));const localSorted=orderSort(currentFolderId,local);local.length=0;local.push(...localSorted);browseItems={folderId:currentFolderId,dirs,local};const rows=dirs.map(f=>`<button type="button" class="folder-row" data-group="dir" data-id="${esc(dirTargetId(f))}" data-name="${esc(f.name)}"><span class="drag-handle" aria-hidden="true"></span><span class="folder-icon">📁</span><span class="folder-label">${esc(f.name)}</span><span class="folder-count">Open ›</span></button>`).join("");$("folderList").innerHTML=(rows||'')+(local.length?`<div class="folder-section-label">TRACKS IN THIS FOLDER</div>`+local.map(t=>`<button type="button" class="folder-track${queue[currentIndex]?.id===t.id?" current":""}" data-group="track" data-id="${esc(t.id)}"><span class="drag-handle" aria-hidden="true"></span><span class="ft-note">♫</span><span class="track-title">${esc(trackInfo(t).title)}</span>${shareIconSpan(t.id)}<span>▶</span></button>`).join(""):'')||'<div class="folder-empty">This folder is empty.</div>';$("folderList").querySelectorAll(".folder-row").forEach(b=>b.onclick=()=>{if(orderEditing)return;enterFolder({id:b.dataset.id,name:b.dataset.name})});$("folderList").querySelectorAll(".folder-track").forEach(b=>b.onclick=()=>{if(orderEditing)return;setQueueForFolder(local);playTrackById(b.dataset.id);closeFolderModal()});wireShareButtons($("folderList"));if($("folderSummary"))$("folderSummary").textContent=`${dirs.length} folders · ${local.length} tracks`;setupOrderEditing()}catch(e){console.error(e);$("folderList").innerHTML=`<div class="folder-empty">${esc(e.message)}</div>`}}
 $("folderClose").onclick=closeFolderModal;$("folderModal").addEventListener("click",e=>{if(e.target.closest("[data-close-folder]"))closeFolderModal()});function onKey(e){if(e.key==="Escape"){if($("howtoModal")&&!$("howtoModal").hidden){if(howtoTopic){howtoTopic=null;renderHowTo()}else closeHowTo();return}if($("libModal")&&!$("libModal").hidden){closeLibraries();return}if(!$("folderModal").hidden)closeFolderModal();else if(!pipWin&&document.body.classList.contains("player-expanded"))togglePlayerExpand(false)}}document.addEventListener("keydown",onKey);
 function setQueueForFolder(list){queue=orderSort(list[0]?.parentId,list);currentIndex=-1;prefetchedNextId=null;prefetchedBlob=null;clearStandby("new folder")}
 function renderTracks(){updatePeek();markPickerCurrent()}
-async function scanLibrary(){if(!accessToken||scanBusy)return;scanBusy=true;setStatus("Scanning Drive…");$("refreshBtn").disabled=true;const lib=curLib();try{try{const meta=await driveGet(ROOT());if(meta&&meta.name&&(lib.name!==meta.name||lib.pending)){lib.name=meta.name;lib.pending=false;saveLibraries()}}catch(err){if(err.status===404||err.status===403){const e2=new Error(NO_ACCESS_MSG(lib.name));e2.noAccess=true;throw e2}throw err}tracks=await walkFolder(ROOT());loadOrderCache();tracks=allSongsSort(tracks);queue=[...tracks];currentIndex=-1;folderStack=[{id:ROOT(),name:lib.name}];currentFolderId=ROOT();currentFolderPath=[];allSongsMode=false;recentMode=false;saveLibrary();updateLibraryUI();refreshOrder();formatCounts();renderTracks();setStatus(`Library scan complete · ${tracks.length} tracks`);if(!$("folderModal").hidden){if(pickerMode==="folders")renderFolderContents();else renderPickerList()}}catch(e){console.error(e);if(e.noAccess){tracks=[];formatCounts();setStatus(e.message)}else{setStatus("Drive connection needs attention");if(tokenValid())alert("Couldn't scan this library.\n\n"+e.message)}}finally{scanBusy=false;$("refreshBtn").disabled=false}}
+async function scanLibrary(){if(!accessToken||scanBusy)return;scanBusy=true;setStatus("Scanning Drive…");$("refreshBtn").disabled=true;const lib=curLib();try{try{const meta=await driveGet(ROOT());if(meta&&meta.name&&(lib.name!==meta.name||lib.pending)){lib.name=meta.name;lib.pending=false;saveLibraries()}}catch(err){if(err.status===404||err.status===403){const e2=new Error(NO_ACCESS_MSG(lib.name));e2.noAccess=true;throw e2}throw err}tracks=await walkFolder(ROOT());loadOrderCache();tracks=allSongsSort(tracks);queue=[...tracks];currentIndex=-1;folderStack=[{id:ROOT(),name:lib.name}];currentFolderId=ROOT();currentFolderPath=[];allSongsMode=false;recentMode=false;saveLibrary();updateLibraryUI();refreshOrder();formatCounts();renderTracks();setStatus(`Library scan complete · ${tracks.length} tracks`);tryPendingShare();if(!$("folderModal").hidden){if(pickerMode==="folders")renderFolderContents();else renderPickerList()}}catch(e){console.error(e);if(e.noAccess){tracks=[];formatCounts();setStatus(e.message);pendingShareTrackId=null}else{setStatus("Drive connection needs attention");if(tokenValid())alert("Couldn't scan this library.\n\n"+e.message)}}finally{scanBusy=false;$("refreshBtn").disabled=false}}
 function showAllSongs(){openPicker("all")}
 $("pickerSearch").addEventListener("input",()=>{if(pickerMode!=="folders")renderPickerList()});
 
@@ -730,14 +783,35 @@ async function downloadFile(id,kind="song",signal){
 let currentArtId=null,artJob=0;
 function showNoArt(){if(currentArtUrl){URL.revokeObjectURL(currentArtUrl);currentArtUrl=null}currentArtId=null;$("artwork").hidden=true;$("artPlaceholder").hidden=false}
 function blobToDataUrl(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob)})}
+// 1.9.39: the on-screen <img> can use the original art blob at full size/aspect, but what we hand to
+// MediaSession for the car is a different story — Tesla (and most cars) get this over Bluetooth AVRCP's
+// cover-art transfer, which is far stricter than the iPhone's own lock screen about image size/aspect.
+// A big or non-square JPEG can display fine on the lock screen yet simply never arrive at the car.
+// So: always shrink+crop to a small square JPEG before it goes anywhere near MediaMetadata.
+const ART_MEDIASESSION_SIZE=512;
+async function makeMediaSessionArtDataUrl(blob){
+  try{
+    const bmp=await createImageBitmap(blob);
+    const srcW=bmp.width,srcH=bmp.height;
+    const S=ART_MEDIASESSION_SIZE,canvas=document.createElement("canvas");canvas.width=S;canvas.height=S;
+    const ctx=canvas.getContext("2d");
+    const scale=Math.max(S/srcW,S/srcH),w=srcW*scale,h=srcH*scale;
+    ctx.drawImage(bmp,(S-w)/2,(S-h)/2,w,h);
+    if(bmp.close)bmp.close();
+    const outBlob=await new Promise(res=>canvas.toBlob(res,"image/jpeg",0.85));
+    const dataUrl=await blobToDataUrl(outBlob);
+    hlog("art-resized",`${srcW}x${srcH} -> ${S}x${S} jpeg, ${Math.round(dataUrl.length/1024)}KB for the car/lock screen`);
+    return dataUrl;
+  }catch(e){hlog("art-resize-failed",e&&e.message||String(e));return null}
+}
 async function loadArtwork(track){const job=++artJob;const files=await driveList(track.parentId);if(job!==artJob)return;const art=files.find(f=>/\.(jpe?g|png|webp)$/i.test(f.name));if(!art){currentArtDataUrl=null;showNoArt();refreshMediaSessionArt();return}if(art.id===currentArtId&&currentArtUrl)return;const blob=await downloadFile(art.id,"art");if(job!==artJob)return;const old=currentArtUrl;currentArtUrl=URL.createObjectURL(blob);currentArtId=art.id;$("artwork").src=currentArtUrl;$("artwork").hidden=false;$("artPlaceholder").hidden=true;if(old)setTimeout(()=>URL.revokeObjectURL(old),1500);
-  try{currentArtDataUrl=await blobToDataUrl(blob);if(job!==artJob)return}catch{currentArtDataUrl=null}
+  try{currentArtDataUrl=await makeMediaSessionArtDataUrl(blob);if(job!==artJob)return}catch{currentArtDataUrl=null}
   refreshMediaSessionArt();
 }
 function refreshMediaSessionArt(){ // the car/lock screen read artwork from the MediaMetadata, which a blob: URL doesn't survive; swap in a data: URL once art finishes loading
   if(!("mediaSession"in navigator)||!navigator.mediaSession.metadata)return;
   const m=navigator.mediaSession.metadata;
-  navigator.mediaSession.metadata=new MediaMetadata({title:m.title,artist:m.artist,album:m.album,artwork:currentArtDataUrl?[{src:currentArtDataUrl,sizes:"512x512"}]:[]});
+  navigator.mediaSession.metadata=new MediaMetadata({title:m.title,artist:m.artist,album:m.album,artwork:currentArtDataUrl?[{src:currentArtDataUrl,sizes:"512x512",type:"image/jpeg"}]:[]});
 }
 function swapToStandby(id,opts={}){
   const idx=queue.findIndex(t=>t.id===id);if(idx<0)return Promise.resolve();
@@ -789,7 +863,7 @@ async function _playTrackById(id,opts={}){const idx=queue.findIndex(t=>t.id===id
   if((e&&e.name==="AbortError")||gen!==playGen){hlog("track-cancelled",`${i.title} | replaced by a newer choice`,"canc");return}
   if(e&&e.name==="NotAllowedError"){hlog("play-needs-tap",`${i.title} | iPhone refused to autostart after ${Date.now()-T0} ms; song is loaded`);setPlayIcon("play");setStatus("Ready · tap play to start");hideResumePrompt();if(!opts.noHistory)pushHistory(t.id);renderTracks();updateMediaSession(t,i);return}
   hlog("track-fail",`${i.title} | ${e&&e.message} after ${Date.now()-T0} ms`);setPlayIcon("play");if(!tokenValid()){setStatus("Drive sign-in expired · tap to continue");showResumePrompt(id)}else{setStatus("Playback unavailable");alert(`This track couldn't be loaded.\n\n${e.message}`)}}}
-function updateMediaSession(t,i){if(!("mediaSession"in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:i.title,artist:i.artist,album:i.release,artwork:currentArtDataUrl?[{src:currentArtDataUrl,sizes:"512x512"}]:[]});setMediaSessionState();const act=(name,fn)=>()=>{hlog("media-button",`${name} | was ${audio.paused?"paused":"playing"} at ${formatTime(audio.currentTime)}`);return fn()};
+function updateMediaSession(t,i){if(!("mediaSession"in navigator))return;navigator.mediaSession.metadata=new MediaMetadata({title:i.title,artist:i.artist,album:i.release,artwork:currentArtDataUrl?[{src:currentArtDataUrl,sizes:"512x512",type:"image/jpeg"}]:[]});setMediaSessionState();const act=(name,fn)=>()=>{hlog("media-button",`${name} | was ${audio.paused?"paused":"playing"} at ${formatTime(audio.currentTime)}`);return fn()};
   const h={play:act("play",()=>audio.play().catch(e=>hlog("media-button-fail",`play ${e&&e.name}`))),pause:act("pause",()=>audio.pause()),previoustrack:act("previous",playPrevious),nexttrack:act("next",()=>playNext(false))};
   for(const[a,fn]of Object.entries(h)){try{navigator.mediaSession.setActionHandler(a,fn)}catch{}}
   for(const a of ["seekbackward","seekforward"]){try{navigator.mediaSession.setActionHandler(a,null)}catch{}}
@@ -812,6 +886,7 @@ function playPrevious(){
   setTimeout(()=>{setRewEnabled(true)},4000);
 }
 $("playBtn").onclick=()=>{if(pendingResumeTrackId){playTrackById(pendingResumeTrackId,false);return}if(!audio.src){if(queue.length)playTrackById(queue[0].id,false)}else if(audio.paused){audio.play()}else audio.pause()};$("nextBtn").onclick=()=>playNext(false);$("backBtn").onclick=playPrevious;$("rewindBtn").onclick=()=>audio.currentTime=Math.max(0,audio.currentTime-15);$("forwardBtn").onclick=()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+15);
+if($("shareTrackBtn"))$("shareTrackBtn").onclick=()=>{const t=queue[currentIndex];if(!t){setStatus("Nothing playing to share yet");return}shareTrackLink(t,$("shareTrackBtn"))};
 function bindAudioEvents(el){
   el.onplay=()=>{if(priming||el!==audio)return;hlog("audio-play",formatTime(audio.currentTime),"aplay");setPlayIcon("pause");setMediaSessionState()};
   el.onpause=()=>{if(priming||el!==audio)return;hlog("audio-pause",formatTime(audio.currentTime),"apause");setPlayIcon("play");setMediaSessionState()};
